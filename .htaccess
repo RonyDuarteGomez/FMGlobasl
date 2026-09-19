@@ -1,0 +1,8 @@
+Options -Indexes
+RewriteEngine On
+
+# Compatibilidad cuando el hosting mantiene la raiz del proyecto como DocumentRoot.
+RewriteRule ^(?:app|bootstrap|config|resources|routes|tests|tools|bin|docs|vendor|storage|\.git)(?:/|$) - [F,L,NC]
+RewriteRule ^(?:composer\.(?:json|lock)|README\.md|\.env.*|error_log.*)$ - [F,L,NC]
+RewriteRule ^public(?:/|$) - [L]
+RewriteRule ^(.*)$ public/$1 [L]

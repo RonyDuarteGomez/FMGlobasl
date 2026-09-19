@@ -1,5 +1,20 @@
 {
     "require": {
         "google/apiclient": "^2.19"
+    },
+    "autoload": {
+        "psr-4": {
+            "FMGlobal\\": "app/"
+        },
+        "classmap": [
+            "app/Providers/",
+            "app/Services/Mail/",
+            "app/Services/Extraction/",
+            "app/Support/",
+            "config/CorreoConfig.php"
+        ]
+    },
+    "scripts": {
+        "test": "@php tests/structure.php"
     }
 }

@@ -1,21 +1,56 @@
 # FMGlobals
 
-Base importada desde la copia de producción. Aplicación PHP con MySQL,
-integraciones Gmail/IMAP y consultas a la API publicada.
+Aplicación PHP reorganizada a partir de la base de producción `7cfa2de`.
+Las rutas de consulta, los servidores de correo, la API de enlaces y las
+credenciales predeterminadas se conservan.
 
-## Configuración
+## Estructura
 
-1. Ejecutar `composer install` para instalar las dependencias de `composer.lock`.
-2. Copiar `config/private.example.php` a `config/private.php` y completar sus valores mediante un canal privado.
-3. Incorporar el archivo OAuth autorizado en `config/credentials.json`; no versionarlo.
-4. Configurar el acceso a la base de datos y disponer de su esquema y datos por separado. Los tokens Gmail se conservan en la base de datos, no en Git.
-5. Mantener las rutas de API, servidor de correo y retorno OAuth correspondientes al entorno autorizado.
+```text
+app/
+  Controllers/       Entradas de cada módulo; coordinan operación y vista
+  Providers/Mail/    Adaptadores Gmail e IMAP
+  Services/          Correo, extracción y preparación de datos del panel
+  Repositories/      Conexión, historial de uso y tokens Gmail
+  Support/           Reglas y utilidades de extracción
+bootstrap/app.php    Inicialización y carga de clases
+config/              Configuración y archivos privados no versionados
+public/              Único directorio que debe publicar el servidor web
+  api/               Rutas JSON existentes
+  usuario/           Rutas de usuarios existentes
+  activacion/        Rutas de horarios existentes
+  soporte/           Rutas existentes de consulta, enlaces y reportes
+  assets/            CSS, JavaScript e imágenes
+resources/views/     Plantillas agrupadas por módulo
+routes/web.php       Mapa de las 27 rutas conservadas
+bin/                 Comandos de mantenimiento por consola
+storage/             Logs y archivos privados, excluidos de Git
+tests/               Comprobaciones automatizadas
+docs/                Arquitectura y despliegue
+```
 
-La base conserva las conexiones y reglas de la copia importada. Para poder
-versionarla, las contraseñas y la clave OAuth incrustadas se trasladaron a
-`config/private.php` sin cambiar sus valores. El código carga esa configuración
-también en producción: incluir ese archivo privado al desplegar, sin subirlo al repositorio.
+## Instalación
 
-No se incluyen dependencias instaladas, credenciales, respaldos, logs ni volcados
-de base de datos. En Apache, `config/.htaccess` impide descargar la configuración;
-en otro servidor debe aplicarse una protección equivalente.
+1. Usar PHP 8.2 o compatible con las dependencias bloqueadas y ejecutar `composer install`.
+2. Incorporar `config/private.php` a partir de `config/private.example.php` por un canal privado.
+3. Incorporar `config/credentials.json` de la integración OAuth existente.
+4. Configurar la base MySQL y disponer del esquema completo, incluida `gmail_tokens`. No se incluyen bases ni tokens en Git.
+5. Configurar el directorio web en `public/`. Leer `docs/DEPLOYMENT.md` antes de actualizar producción.
+6. Ejecutar `php tests/structure.php` o `composer test`.
+
+`config/database.php` conserva los valores de conexión importados. Para una
+instancia de prueba se pueden definir las variables `FMGLOBAL_DB_HOST`,
+`FMGLOBAL_DB_USER`, `FMGLOBAL_DB_PASSWORD` y `FMGLOBAL_DB_NAME` en el proceso del
+servidor. No se carga `.env` automáticamente. Una variable vacía se respeta.
+
+Los secretos permanecen fuera del directorio público y del repositorio.
+Las rutas OAuth conservan `https://fmglobals.com/oauth2callback.php`.
+Las API de correo siguen en `https://fmglobals.com/api/` y la API de enlaces
+continúa en su dirección de Render existente.
+
+## Desarrollo
+
+La rama `main` conserva la base importada. La reorganización se desarrolla en
+`refactor/estructura-modular`. No mezclar una instalación nueva con restos de los
+archivos de la estructura anterior. Las comprobaciones HTTP realizadas y sus
+limitaciones están en `docs/DEPLOYMENT.md`.

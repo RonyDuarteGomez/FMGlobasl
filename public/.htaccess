@@ -1,0 +1,5 @@
+Options -Indexes
+DirectoryIndex index.html
+<FilesMatch "(?i)(^error_log|\.(?:log|sql|zip|bak|env)$)">
+    Require all denied
+</FilesMatch>
