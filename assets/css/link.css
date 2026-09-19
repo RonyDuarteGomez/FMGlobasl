@@ -1,0 +1,67 @@
+
+/* FORMULARIO LINK */
+
+.link-container {
+  width: 100%;
+  display: flex;
+  justify-content: left;
+  margin-top: 20px;
+}
+
+.link-form {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.link-form input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  height: 38px;
+}
+
+.link-resultado {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.link-resultado input {
+  flex: 1;
+}
+
+.btn-copy {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+@media (max-width: 600px) {
+
+  .link-resultado {
+    flex-direction: column;
+  }
+
+  .btn-copy {
+    width: 100%;
+  }
+
+}
+
+.link-botones {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.link-botones .btn-action {
+    flex: 1;
+}
+

@@ -1,0 +1,167 @@
+/* ================================
+   CONTENEDOR GENERAL
+   ================================ */
+.form-config {
+    background: var(--color-fondo);
+    padding: 18px 20px;
+    border-radius: var(--radio-borde);
+    box-shadow: var(--sombra-suave);
+    max-width: 720px;
+    width: 100%;
+    /*margin: auto;*/
+}
+
+/* ================================
+   FILA DE DÍA
+   ================================ */
+.fila-dia {
+    display: grid;
+    grid-template-columns: 120px 1fr 1fr 130px;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* ================================
+   DÍA
+   ================================ */
+.fila-dia .dia label {
+    color: var(--color-primario);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* ================================
+   HORARIOS (DESDE / HASTA)
+   ================================ */
+.form-group.horas label {
+    font-size: 13px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.grupo-horas {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.grupo-horas label {
+    font-size: 13px;
+}
+
+.grupo-horas select {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px;
+    border-radius: var(--radio-borde);
+    border: 1px solid #ccc;
+    background: var(--color-gris-claro);
+    font-size: 14px;
+}
+
+/* Separador “a” */
+.separador {
+    font-weight: bold;
+    color: #444;
+}
+
+/* ================================
+   BOTÓN ACTUALIZAR
+   ================================ */
+.fila-dia .accion {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-actualizar-dia {
+    padding: 8px 14px;
+    background: var(--color-secundario);
+    color: #fff;
+    border: none;
+    border-radius: var(--radio-borde);
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.3s ease;
+    font-size: 13px;
+    margin-bottom: -15px;
+}
+
+.btn-actualizar-dia:hover {
+    background: var(--color-primario);
+}
+
+/* ================================
+   RESPONSIVE — TABLET
+   ================================ */
+@media (max-width: 900px) {
+    .fila-dia {
+        grid-template-columns: 100px 1fr 1fr;
+    }
+
+    /* Botón baja una fila */
+    .fila-dia .accion {
+        grid-column: span 3;
+        margin-top: 5px;
+    }
+}
+
+/* ================================
+   RESPONSIVE — CELULAR
+   ================================ */
+@media (max-width: 600px) {
+    .fila-dia {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 15px 0;
+    }
+
+    .grupo-horas {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .grupo-horas select {
+        width: 100%;
+    }
+
+    .separador {
+        display: none; /* oculta el “a” */
+    }
+
+    .fila-dia .accion {
+        width: 100%;
+    }
+
+    .btn-actualizar-dia {
+        width: 100%;
+    }
+}
+
+/* ================================
+   ESTILO GENERAL BOTONERA FINAL
+   ================================ */
+.botonera.doble {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 18px;
+}
+
+.btn-acceder {
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: var(--radio-borde);
+    cursor: pointer;
+    transition: 0.3s ease;
+    width: 200px;
+}
+
+.btn-acceder:hover {
+    background: #c0392b;
+}
+
+
