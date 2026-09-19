@@ -54,3 +54,9 @@ La rama `main` conserva la base importada. La reorganización se desarrolla en
 `refactor/estructura-modular`. No mezclar una instalación nueva con restos de los
 archivos de la estructura anterior. Las comprobaciones HTTP realizadas y sus
 limitaciones están en `docs/DEPLOYMENT.md`.
+## Base de datos local
+
+Copiar config/database.local.example.php a config/database.local.php para utilizar
+una base local. Este último archivo está excluido de Git y no debe copiarse a
+producción. Prioridad: variables de entorno, archivo local y valores de producción.
+La copia local actual usa fmglobal_streaming_local.

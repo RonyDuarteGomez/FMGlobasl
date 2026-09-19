@@ -67,3 +67,11 @@ navegador. Las comprobaciones HTTP no sustituyen esa revisión.
 Volver a apuntar el servidor al release anterior (base 7cfa2de) y conservar sus
 archivos privados. No hay una migración de base de datos que revertir. No restaurar
 copias antiguas de tokens para revertir únicamente los archivos de aplicación.
+## Validación posterior a importar la base local
+
+Se conectó fmglobal_streaming_local mediante config/database.local.php (excluido
+de Git). Se verificaron login, mantenimiento Gmail, inicio, usuarios, horarios y
+reportes: HTTP 200 sin errores PHP visibles. La tabla gmail_tokens ya está presente.
+Esto resuelve la limitación anterior del esquema local; no valida la vigencia de
+los tokens ni realiza una autorización o consulta nueva a Gmail. No desplegar
+config/database.local.php en producción.
