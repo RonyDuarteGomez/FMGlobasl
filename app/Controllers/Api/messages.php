@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 // PARÁMETROS
 // =====================================================
 
-$proveedor = $_GET['proveedor'] ?? 'imap';
+$proveedor = $_GET['proveedor'] ?? (str_ends_with(strtolower(\FMGlobal\Support\Input::email($_GET)), '@gmail.com') ? 'gmail' : 'imap');
 
 $correo = $_GET['correo'] ?? '';
 

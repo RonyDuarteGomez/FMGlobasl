@@ -1,0 +1,17 @@
+{
+    "jquery":  {
+                   "license":  "MIT",
+                   "source":  "https://www.npmjs.com/package/jquery/v/3.6.0",
+                   "version":  "3.6.0"
+               },
+    "adminlte":  {
+                     "license":  "MIT",
+                     "source":  "https://www.npmjs.com/package/admin-lte/v/4.9.1",
+                     "version":  "4.9.1"
+                 },
+    "bootstrap":  {
+                      "license":  "MIT",
+                      "source":  "https://www.npmjs.com/package/bootstrap/v/5.3.8",
+                      "version":  "5.3.8"
+                  }
+}

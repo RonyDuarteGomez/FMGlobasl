@@ -5,6 +5,8 @@
 
 class DisneyOtpService
 {
+    public function __construct(private ?CorreoService $correoService = null) { $this->correoService ??= new CorreoService(); }
+
     public function buscarOtp(
         $proveedor,
         $correo,
@@ -17,7 +19,7 @@ class DisneyOtpService
         // =====================================================
 
         $correoService =
-            new CorreoService();
+            $this->correoService;
 
         $response =
             $correoService->buscarCorreos(
@@ -31,20 +33,8 @@ class DisneyOtpService
         // VALIDAR RESPONSE
         // =====================================================
 
-        if (
-            !$response['ok']
-            ||
-            empty($response['data'])
-        ) {
-
-            return [
-
-                'ok' => false,
-
-                'message' =>
-                    'No se encontraron correos'
-            ];
-        }
+        if (!$response['ok']) return $response;
+        if (empty($response['data'])) return ['ok'=>true,'total'=>0,'data'=>[]];
 
         // =====================================================
         // SUBJECTS DISNEY
@@ -52,14 +42,14 @@ class DisneyOtpService
 
         $subjectsDisney =
             StreamingRules::getDisneyOtpSubjects();
-        
+
         $resultado = [];
 
         // =====================================================
         // RECORRER CORREOS
         // =====================================================
 
-        
+
         foreach (
             $response['data']
             as $correoData
@@ -117,8 +107,8 @@ class DisneyOtpService
                     null
             ];
         }
-        
-        
+
+
 
         // =====================================================
         // RESPONSE FINAL

@@ -1,0 +1,27 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><title>Prueba de paginación</title>
+<script src="../../public/assets/vendor/jquery/jquery.min.js"></script>
+<input id="buscadorUsuarios"><select id="registrosUsuarios"><option value="20">20</option><option value="10">10</option></select>
+<table id="usuariosTable"><tbody></tbody></table><div id="paginacionUsuarios"></div><pre id="results"></pre>
+<script src="../../public/assets/js/usuario.js"></script>
+<script>
+const results=[];
+const check=(name,ok)=>{results.push({name,ok:!!ok});if(!ok)throw new Error(name);};
+try {
+  const body=document.querySelector('tbody');
+  for(let n=1;n<=25;n++){const tr=body.insertRow();tr.insertCell().textContent='Persona '+n;}
+  iniciarPaginacionUsuarios();
+  check('Primera página de 20 registros',body.rows.length===20);
+  [...document.querySelectorAll('#paginacionUsuarios button')].find(b=>b.textContent==='2').click();
+  check('Segunda página conserva últimos registros',body.rows.length===5&&body.rows[0].textContent==='Persona 21');
+  document.getElementById('buscadorUsuarios').value='Persona 25';
+  document.getElementById('buscadorUsuarios').dispatchEvent(new Event('input'));
+  check('Buscar desde segunda página reinicia paginación',body.rows.length===1&&body.rows[0].textContent==='Persona 25');
+  document.getElementById('buscadorUsuarios').value='';
+  document.getElementById('buscadorUsuarios').dispatchEvent(new Event('input'));
+  document.getElementById('registrosUsuarios').value='10';
+  document.getElementById('registrosUsuarios').dispatchEvent(new Event('change'));
+  check('Cambiar tamaño a 10 registros',body.rows.length===10);
+  document.title='PAGINATION_PASS';
+} catch(error) {results.push({name:error.message,ok:false});document.title='PAGINATION_FAIL';}
+document.getElementById('results').textContent=JSON.stringify(results);
+</script></html>

@@ -53,18 +53,23 @@ no sustituye ese tramo por llamadas locales.
   de respaldo se conserva como referencia en docs/archive, fuera del sitio público.
 - Los logs antiguos se trasladaron a storage/logs, ignorado por Git.
 
-## Límites de esta reforma
+## Separación de lógica y controles comunes
 
-La estructura está reorganizada, pero no se presenta como una reescritura total
-de reglas de negocio. Los controladores heredados de usuarios, horarios y
-reportes todavía contienen parte de su SQL y lógica. Se pueden extraer a
-repositorios específicos por operación, con pruebas de contrato, en iteraciones
-posteriores. Las vistas heredadas aún utilizan algunos resultados mysqli.
+Los controladores de usuarios, horarios y reportes utilizan repositorios específicos.
+Usuarios y horarios aplican validación en servicios antes de guardar. Las vistas
+heredadas de listados todavía reciben resultados mysqli para conservar su contrato.
 
-No se modificaron permisos por buzón, política OAuth, reglas de horarios,
-expresiones de extracción ni parámetros de las consultas publicadas. Esos cambios
-necesitan pruebas y decisiones propias, no deben ocultarse dentro de un traslado
-de carpetas. Tampoco se cambiaron credenciales de producción ni se migró MySQL.
+El despachador aplica sesión, permisos según rol, métodos HTTP y CSRF. La sesión
+se contrasta con la cuenta actual en cada operación protegida. Las llamadas de
+correo pasan por MailApiClient y los proveedores implementan MailProvider.
+
+Se conservan los destinos de producción y las reglas de extracción. El bloqueo
+horario del login continúa desactivado. OAuth incorpora un estado de un solo uso;
+la autorización debe iniciarse desde el mismo dominio y sesión que recibe el callback.
+No se añade una migración de MySQL ni autenticación entre servidores a las API públicas.
+
+Ver [BACKEND.md](BACKEND.md) para la matriz de permisos, cambios de comportamiento,
+límites de compatibilidad y comandos de prueba.
 
 ## Excepción explícita de mantenimiento
 
@@ -72,3 +77,16 @@ llama.php era un ejecutor de un comando fijo del servidor. Su contenido ahora es
 en bin/run-token.php y solo funciona por CLI. public/llama.php responde HTTP 410.
 No se encontraron llamadas a esa ruta dentro del código de la aplicación. Si
 existe un consumidor externo, hay que coordinarlo antes de desplegar.
+
+## Permisos dinámicos y nuevo Inicio
+
+La gestión de accesos ahora se guarda por perfil y por usuario en la base de datos. Las reglas fijas descritas anteriormente se conservan como configuración inicial, no como autorización permanente. Esta entrega agrega una migración de tablas de permisos que debe ejecutarse antes de desplegar; reemplaza la indicación anterior de que no había cambios de esquema. Consulte [Permisos y dashboard](PERMISSIONS_AND_DASHBOARD.md) para uso, alcance, migración y pruebas.
+
+La cuenta reservada de superusuario (id 1, usuario admin) dispone de todos los permisos del catálogo, independientemente del perfil o las excepciones. No aparece en el selector de permisos por usuario y se rechazan cambios directos a sus permisos. Los demás administradores siguen las reglas configuradas en base de datos.
+
+
+## Sesión por inactividad
+
+Session::IDLE_SECONDS define 1800 segundos. El login inicializa last_activity; Access rechaza la sesión al alcanzar el límite y borra identidad y CSRF. Las peticiones internas autorizadas renuevan el plazo después de verificar CSRF. Las API públicas y Validación no prolongan la sesión. Las sesiones anteriores sin timestamp se incorporan al primer acceso autorizado.
+
+En el panel session.js avisa dos minutos antes. Interacciones reales renuevan por POST session.php, con CSRF, como máximo una vez por minuto; el botón Continuar sesión fuerza la renovación. No hay renovación automática en reposo. Las pestañas de una misma sesión comparten el plazo; al volver de suspensión se comprueba inmediatamente. Respuestas 401 de fetch y jQuery (también global:false) llevan al login con mensaje de vencimiento. No se repiten automáticamente operaciones de guardado.

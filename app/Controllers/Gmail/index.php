@@ -1,6 +1,6 @@
 <?php
 
-session_start();
+\FMGlobal\Security\Session::start();
 
 if (!isset($_SESSION['usuario'])) {
 
@@ -17,6 +17,12 @@ date_default_timezone_set('America/Lima');
 // CONSULTA CORREOS AUTORIZADOS
 // =====================================
 
-$result = (new \FMGlobal\Repositories\GmailTokenRepository($conexion))->listAuthorized();
+$repository = new \FMGlobal\Repositories\GmailTokenRepository($conexion);
+if (($_SERVER['REQUEST_METHOD']??'GET')==='POST') {
+    $repository->deactivate(\FMGlobal\Support\Input::id($_POST,'id'));
+    header('Location: home.php?modulo=Autoriza',true,303);
+    exit;
+}
+$result = $repository->listAuthorized();
 
 require FM_ROOT . '/resources/views/Gmail/index.php';

@@ -1,95 +1,44 @@
-
-
-<div class="contenedor-seccion">
-  <h2><b>Configuración Activación</b></h2>
-  <p>El rango de horas representa el horario en que el servicio estara inactivo.</p>
-
-  <div class="botonera doble">
-    <button type="button" class="btn-action btn-new btn-acceder" onclick="window.open('validacion.php', '_blank');">
-      Acceder
-    </button>
-  </div>
-  <br />
-
-  <form id="formActivacion" class="form-config">
-    <?php while ($row = $result->fetch_assoc()): ?>
-      <?php
-      $hora_inicio_val = (int)substr($row['hora_inicio'], 0, 2);
-      $hora_fin_val = (int)substr($row['hora_fin'], 0, 2);
-
-      // Verificar si es el día actual
-      $es_dia_actual = ($row['dia'] === $dia_actual);
-
-      /*echo $row['dia'];
-         echo $dia_actual;
-         echo $es_dia_actual;
-         echo $hora_actual;
-         echo $hora_inicio_val;
-         echo $hora_fin_val;*/
-
-
-      // Si es el día actual, verificamos la hora
-      if ($es_dia_actual) {
-        if ($hora_actual >= $hora_inicio_val && $hora_actual < $hora_fin_val) {
-          $activo = false;
-        } else {
-          $activo = true;
-        }
-      } else {
-        $activo = false;
-      }
-
-
-
-      $estado_texto = $activo ? '🟢 Activo' : '🔴 Inactivo';
-      $estado_color = $activo ? 'color-activo' : 'color-inactivo';
-      ?>
-
-      <div class="form-row fila-dia <?= $es_dia_actual ? 'dia-hoy' : '' ?>">
-        <div class="form-group dia">
-          <label><b><?= htmlspecialchars($row['dia']) ?></b></label>
-          <div class="estado <?= $estado_color ?>"><?= $estado_texto ?></div>
-        </div>
-
-        <div class="form-group horas">
-          <label>Horario</label>
-          <div class="grupo-horas">
-            <select id="hora_inicio_<?= $row['id'] ?>" name="hora_inicio_<?= $row['id'] ?>">
-              <?php
-              for ($i = 0; $i < 24; $i++) {
-                $hora = str_pad($i, 2, '0', STR_PAD_LEFT);
-                $selected = ($hora == $hora_inicio_val) ? 'selected' : '';
-                echo "<option value='$hora' $selected>$hora:00</option>";
-              }
-              ?>
-            </select>
-
-            <span class="separador">a</span>
-
-            <select id="hora_fin_<?= $row['id'] ?>" name="hora_fin_<?= $row['id'] ?>">
-              <?php
-              for ($i = 0; $i < 24; $i++) {
-                $hora = str_pad($i, 2, '0', STR_PAD_LEFT);
-                $selected = ($hora == $hora_fin_val) ? 'selected' : '';
-                echo "<option value='$hora' $selected>$hora:00</option>";
-              }
-              ?>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group accion">
-          <button
-            type="button"
-            class="btn-action btn-new btn-actualizar-dia"
-            data-id="<?= $row['id'] ?>"
-            data-dia="<?= htmlspecialchars($row['dia']) ?>">
-            Actualizar
-          </button>
-        </div>
-      </div>
-    <?php endwhile; ?>
-  </form>
-
-
+<?php
+$escape=fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8');
+$days=[1=>'Lunes',2=>'Martes',3=>'Miércoles',4=>'Jueves',5=>'Viernes',6=>'Sábado',7=>'Domingo'];
+$today=(int)(new DateTimeImmutable('now',new DateTimeZone('America/Lima')))->format('N');
+$options=static function(string $selected,bool $end=false)use($escape):void {
+    $values=[];for($minute=$end?15:0;$minute<=($end?1440:1425);$minute+=15)$values[]=\FMGlobal\Services\Schedules\WeeklySchedule::time($minute);
+    if(!in_array($selected,$values,true)){$values[]=$selected;sort($values);}
+    foreach($values as $value)echo '<option value="'.$escape($value).'"'.($value===$selected?' selected':'').'>'.$escape($value).'</option>';
+};
+$slot=static function(array $range)use($options):void { ?>
+<div class="schedule-slot">
+<label><span>Desde</span><select class="form-select form-select-sm" data-start><?php $options($range['start']); ?></select></label>
+<span class="slot-divider" aria-hidden="true">—</span>
+<label><span>Hasta</span><select class="form-select form-select-sm" data-end><?php $options($range['end'],true); ?></select></label>
+<button type="button" class="btn btn-sm btn-outline-danger" data-remove-slot aria-label="Quitar horario" title="Quitar horario">×</button>
+</div>
+<?php }; ?>
+<div class="contenedor-seccion support-users-page weekly-schedule-page">
+<div class="module-heading"><h2>Soporte clientes</h2><span class="module-category">Servicios</span></div>
+<div class="schedule-toolbar">
+<div class="schedule-live">Servicio ahora <span id="scheduleLive" class="badge <?= $active?'text-bg-success':'text-bg-danger' ?>"><?= $active?'Activo':'Inactivo' ?></span><span class="text-body-secondary">Hora de Lima</span><a class="btn btn-primary btn-sm schedule-access" href="validacion.php" target="_blank" rel="noopener">Acceder al servicio</a></div>
+</div>
+<form id="formActivacion" class="card card-outline card-primary schedule-editor" data-revision="<?= $schedule['revision'] ?>">
+<?= \FMGlobal\Security\Csrf::field() ?>
+<div class="card-header"><h3 class="card-title">Programación semanal</h3><p class="schedule-description">Elige cuándo estarán disponibles los servicios de Validación. Fuera de estos horarios estarán deshabilitados.</p><small class="text-body-secondary">24:00 indica el final del día. Para continuar después de medianoche, agrega un horario al día siguiente.</small></div>
+<div class="card-body schedule-days">
+<?php foreach($days as $number=>$label): $day=$schedule['week'][$number]; ?>
+<section class="schedule-day <?= $number===$today?'schedule-today':'' ?>" data-day="<?= $number ?>" aria-label="<?= $label ?>">
+<div class="schedule-day-name"><h4><?= $label ?></h4><?php if($number===$today): ?><span class="badge text-bg-primary">Hoy</span><?php endif ?></div>
+<label class="schedule-mode"><span class="visually-hidden">Disponibilidad del <?= $label ?></span><select class="form-select form-select-sm" data-mode>
+<?php foreach(['all'=>'Activo todo el día','hours'=>'Definir horarios','off'=>'Deshabilitado'] as $mode=>$text): ?><option value="<?= $mode ?>" <?= $mode===$day['mode']?'selected':'' ?>><?= $text ?></option><?php endforeach ?>
+</select></label>
+<div class="schedule-periods">
+<p class="schedule-day-summary" <?= $day['mode']==='hours'?'hidden':'' ?>><?= $day['mode']==='all'?'Disponible las 24 horas':'Sin atención este día' ?></p>
+<div class="schedule-hours" <?= $day['mode']!=='hours'?'hidden':'' ?>><div class="schedule-slots"><?php foreach($day['slots'] as $range)$slot($range); ?></div><button type="button" class="btn btn-sm btn-outline-primary" data-add-slot>+ Agregar horario</button></div>
+</div>
+<button type="button" class="btn btn-sm btn-outline-secondary schedule-copy" data-copy-day title="Copiar la programación de este día a los otros seis días">Copiar al resto</button>
+</section>
+<?php endforeach ?>
+</div>
+<div class="card-footer schedule-savebar"><div id="scheduleStatus" role="status" aria-live="polite"><?= $schedule['ready']?'Programación guardada.':'La programación actual se conserva. Falta aplicar la migración para editarla.' ?></div><button class="btn btn-primary" type="submit" <?= !$schedule['ready']?'disabled':'' ?>>Guardar programación</button></div>
+</form>
+<template id="scheduleSlotTemplate"><?php $slot(['start'=>'09:00','end'=>'18:00']); ?></template>
 </div>

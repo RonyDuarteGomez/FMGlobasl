@@ -1,33 +1,17 @@
 // ===== Funciones de Mantenimiento de Usuarios =====
 function iniciarUsuarios() {
-  // ---------- MODAL ----------
-  $("#btnNuevo").click(function () {
-    $("#usuario").prop("disabled", false);
-    $("#usuarioForm")[0].reset();
-    $("#usuario_id").val("");
-    $("#personal_id").val("");
-    //$('#modalUsuario').fadeIn(200).css('display','flex');
-    // OCULTA LOS HORARIOS
-    $("#seccionHorarios").hide();
-
-    $("#modalUsuario").css("display", "flex").hide().fadeIn(200);
+  const userModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUsuario'));
+  $('#btnNuevo').on('click', function () {
+    $('#usuarioForm')[0].reset();
+    $('#usuario').prop('disabled', false);
+    $('#usuario_id, #personal_id').val('');
+    $('#clave').prop('required', true).attr('type', 'password');
+    $('#claveLabel').html('Contraseña <span class="text-danger" aria-hidden="true">*</span>');
+    $('#claveHelp').text('Obligatoria para crear la cuenta.');
+    $('#tituloModalUsuario').text('Nuevo usuario');
+    $('#togglePassword').attr('aria-pressed', 'false').attr('aria-label', 'Mostrar contraseña').find('i').attr('class','fas fa-eye');
+    userModal.show();
   });
-
-  $("#cerrarModal").click(function () {
-    $("#modalUsuario").fadeOut(200);
-  });
-
-  /*window.addEventListener('click', (e) => {
-        if(e.target == document.getElementById('modalUsuario')){
-            $('#modalUsuario').fadeOut(200);
-        }
-    });*/
-  $("#modalUsuario").on("click", function (e) {
-    if ($(e.target).is("#modalUsuario")) {
-      $(this).fadeOut(200);
-    }
-  });
-
   // ---------- TABLA ----------
   function cargarTabla() {
     $.ajax({
@@ -41,15 +25,13 @@ function iniciarUsuarios() {
   }
   cargarTabla();
 
-  $("#btnGuardarUsuario").click(function (e) {
-    e.preventDefault();
-    $("#usuarioForm").trigger("submit");
-  });
+
 
   // ---------- GUARDAR ----------
   $("#usuarioForm").submit(function (e) {
     e.preventDefault();
 
+    if (!this.reportValidity()) return;
     // -------- VALIDACIONES --------
     const nombre = $("#nombre").val().trim();
     const rol = $("#rol").val().trim();
@@ -86,7 +68,7 @@ function iniciarUsuarios() {
       success: function (resp) {
         alert(resp);
         if (resp.includes("correctamente")) {
-          $("#modalUsuario").fadeOut(200);
+          userModal.hide();
           cargarTabla();
         }
       },
@@ -94,7 +76,7 @@ function iniciarUsuarios() {
   });
 
   // ---------- EDITAR ----------
-  $(document).on("click", ".btn-edit", function () {
+  $(document).off("click", ".btn-edit").on("click", ".btn-edit", function () {
     $("#usuario").prop("disabled", true);
 
     let usuario_id = $(this).data("id");
@@ -120,32 +102,12 @@ function iniciarUsuarios() {
           $("#rol").val(data.personal.rol);
           $("#clave").val("");
 
-          // ---------- HORARIOS ----------
-          for (let dia = 1; dia <= 7; dia++) {
-            let inicio = data.horarios[dia]?.inicio ?? "";
-            let fin = data.horarios[dia]?.fin ?? "";
-
-            // Recortar HH:MM:SS → HH
-            if (inicio.includes(":")) inicio = inicio.split(":")[0];
-            if (fin.includes(":")) fin = fin.split(":")[0];
-
-            // Asegurar 2 dígitos
-            inicio = inicio.toString().padStart(2, "0");
-            fin = fin.toString().padStart(2, "0");
-
-            $("#hora_inicio_" + dia).val(inicio);
-            $("#hora_fin_" + dia).val(fin);
-          }
-
-          //$('#modalUsuario').fadeIn(200).css('display','flex');
-          // MOSTRAR HORARIOS SOLO EN EDICIÓN
-          if (data.personal.rol === 1) {
-            $("#seccionHorarios").hide();
-          } else {
-            $("#seccionHorarios").show();
-          }
-
-          $("#modalUsuario").css("display", "flex").hide().fadeIn(200);
+          $('#clave').prop('required', false).attr('type', 'password');
+          $('#claveLabel').text('Contraseña');
+          $('#claveHelp').text('Déjala vacía para conservar la contraseña actual.');
+          $('#tituloModalUsuario').text('Editar usuario');
+          $('#togglePassword').attr('aria-pressed', 'false').attr('aria-label', 'Mostrar contraseña').find('i').attr('class','fas fa-eye');
+          userModal.show();
         } else {
           alert(data.message);
         }
@@ -159,8 +121,8 @@ function iniciarUsuarios() {
     let usuario_id = $(this).data("id");
     let esActivo = $(this).hasClass("btn-delete");
     let mensaje = esActivo
-      ? "¿Desea inactivar el usuario?"
-      : "¿Desea activar el usuario?";
+      ? "¿Estás seguro de inactivar al usuario " + this.dataset.nombre + "?"
+      : "¿Estás seguro de activar al usuario " + this.dataset.nombre + "?";
     if (confirm(mensaje)) {
       $.post(
         "usuario/usuario_toggle.php",
@@ -182,8 +144,8 @@ function iniciarUsuarios() {
     let esActivo = $(this).hasClass("btn-delete");
 
     let mensaje = esActivo
-      ? "¿Desea inactivar el usuario?"
-      : "¿Desea activar el usuario?";
+      ? "¿Estás seguro de inactivar al usuario " + this.dataset.nombre + "?"
+      : "¿Estás seguro de activar al usuario " + this.dataset.nombre + "?";
 
     if (confirm(mensaje)) {
       $.post(
@@ -206,7 +168,8 @@ function iniciarUsuarios() {
     let input = $("#clave");
     let type = input.attr("type") === "password" ? "text" : "password";
     input.attr("type", type);
-    $(this).toggleClass("fa-eye fa-eye-slash");
+    $(this).attr('aria-pressed', String(type === 'text')).attr('aria-label', type === 'text' ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    $(this).find('i').attr('class', type === 'text' ? 'fas fa-eye-slash' : 'fas fa-eye');
   });
 }
 
@@ -228,15 +191,19 @@ function iniciarPaginacionUsuarios() {
   // ---------------------------
   // 🔍 BUSCAR
   // ---------------------------
-  buscador.addEventListener("input", () => {
-    const texto = buscador.value.toLowerCase();
-    filasFiltradas = filasOriginales.filter((f) =>
-      f.textContent.toLowerCase().includes(texto)
+  const estado = document.getElementById('estadoUsuarios');
+  function filtrarUsuarios() {
+    const texto = buscador.value.trim().toLowerCase();
+    filasFiltradas = filasOriginales.filter(f =>
+      (!estado.value || f.dataset.estado === estado.value) &&
+      Array.from(f.cells).slice(0,6).some(cell => cell.textContent.toLowerCase().includes(texto))
     );
     paginaActual = 1;
     renderTabla();
     renderPaginacion();
-  });
+  }
+  buscador.addEventListener('input', filtrarUsuarios);
+  estado.addEventListener('change', filtrarUsuarios);
 
   // ---------------------------
   // 📌 REGISTROS POR PÁGINA
@@ -263,6 +230,12 @@ function iniciarPaginacionUsuarios() {
       tabla.appendChild(f);
     });
 
+    if (!mostrar.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td'); cell.colSpan = 8;
+      cell.textContent = filasOriginales.length ? 'No hay usuarios que coincidan con los filtros.' : 'No hay usuarios registrados.';
+      row.append(cell); tabla.append(row);
+    }
     tabla.style.opacity = "0";
     setTimeout(() => (tabla.style.opacity = "1"), 120);
   }
@@ -279,13 +252,9 @@ function iniciarPaginacionUsuarios() {
     for (let i = 1; i <= total; i++) {
       const btn = document.createElement("button");
       btn.textContent = i;
-      btn.style.padding = "6px 10px";
-      btn.style.border = "1px solid #ccc";
-      btn.style.borderRadius = "6px";
-      btn.style.cursor = "pointer";
-      btn.style.background =
-        i === paginaActual ? "var(--color-primario)" : "white";
-      btn.style.color = i === paginaActual ? "white" : "#333";
+      btn.className = "btn btn-sm btn-outline-primary pagination-button";
+      btn.classList.toggle("is-active", i === paginaActual);
+      if (i === paginaActual) btn.setAttribute("aria-current", "page");
 
       btn.addEventListener("click", () => {
         paginaActual = i;
@@ -299,7 +268,7 @@ function iniciarPaginacionUsuarios() {
   */
   
   function renderPaginacion() {
-  paginacionDiv.innerHTML = "";
+  paginacion.innerHTML = "";
 
   const totalPaginas = Math.ceil(filasFiltradas.length / registrosPorPagina);
   const maxPaginasVisibles = 5;
@@ -336,12 +305,9 @@ function iniciarPaginacionUsuarios() {
       const btn = document.createElement("button");
       btn.textContent = texto;
     
-      btn.style.padding = "6px 10px";
-      btn.style.borderRadius = "6px";
-      btn.style.border = "1px solid #ccc";
-      btn.style.cursor = "pointer";
-      btn.style.background = activo ? "var(--color-primario)" : "white";
-      btn.style.color = activo ? "white" : "#333";
+      btn.className = "btn btn-sm btn-outline-primary pagination-button";
+      btn.classList.toggle("is-active", activo);
+      if (activo) btn.setAttribute("aria-current", "page");
     
       btn.addEventListener("click", () => {
         paginaActual = pagina;
@@ -349,7 +315,7 @@ function iniciarPaginacionUsuarios() {
         renderPaginacion();
       });
     
-      paginacionDiv.appendChild(btn);
+      paginacion.appendChild(btn);
     }
 
 

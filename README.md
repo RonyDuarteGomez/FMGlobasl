@@ -60,3 +60,12 @@ Copiar config/database.local.example.php a config/database.local.php para utiliz
 una base local. Este último archivo está excluido de Git y no debe copiarse a
 producción. Prioridad: variables de entorno, archivo local y valores de producción.
 La copia local actual usa fmglobal_streaming_local.
+
+Guía de mantenimiento del tema y los componentes: [docs/DESIGN.md](docs/DESIGN.md).
+
+Cambios de lógica, permisos y pruebas funcionales: [docs/BACKEND.md](docs/BACKEND.md).
+
+
+## Permisos dinámicos y nuevo Inicio
+
+La gestión de accesos ahora se guarda por perfil y por usuario en la base de datos. Las reglas fijas descritas anteriormente se conservan como configuración inicial, no como autorización permanente. Esta entrega agrega una migración de tablas de permisos que debe ejecutarse antes de desplegar; reemplaza la indicación anterior de que no había cambios de esquema. Consulte [Permisos y dashboard](docs/PERMISSIONS_AND_DASHBOARD.md) para uso, alcance, migración y pruebas.

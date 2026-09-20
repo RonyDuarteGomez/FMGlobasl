@@ -1,3 +1,8 @@
+// Leer el tema al crear el grafico permite cambiar la paleta solo en CSS.
+function colorTema(nombre) {
+  return getComputedStyle(document.documentElement).getPropertyValue(nombre).trim();
+}
+
 let graficoReportesChart = null;
 
 
@@ -11,9 +16,7 @@ let graficoReportesChart = null;
 
       const ctx = document.getElementById('graficoConsultas').getContext('2d');
 
-      const primaryColor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-primario')
-        .trim() || 'rgba(13,110,253,1)';
+      const primaryColor = colorTema('--color-primario');
 
       function hexToRgbA(hex, alpha) {
         if (!hex.startsWith('#')) return hex;
@@ -36,8 +39,7 @@ let graficoReportesChart = null;
               label: "Netflix",
               data: window.fmDashboard.valores1_clean,
               borderWidth: 3,
-              borderColor: "rgba(243, 10, 10, 1)",
-              //backgroundColor: "hsla(0, 84%, 53%, 0.15)",
+              borderColor: colorTema('--color-grafico-netflix'),
               fill: false,
               tension: 0,
 
@@ -45,10 +47,10 @@ let graficoReportesChart = null;
               // ==== PUNTOS ACTIVADOS ====
               pointRadius: 3,
               pointBackgroundColor: hexToRgbA(primaryColor, 1),
-              pointBorderColor: "#fff",
+              pointBorderColor: colorTema('--color-inverso'),
               pointBorderWidth: 1.8,
               pointHoverRadius: 7,
-              pointHoverBackgroundColor: "#fff",
+              pointHoverBackgroundColor: colorTema('--color-inverso'),
               pointHoverBorderColor: hexToRgbA(primaryColor, 1)
 
             },
@@ -56,18 +58,17 @@ let graficoReportesChart = null;
               label: "Disney",
               data: window.fmDashboard.valores2_clean,
               borderWidth: 3,
-              borderColor: "rgba(6, 17, 234, 1)",
-              //backgroundColor: "hsla(236, 84%, 53%, 0.15)",
+              borderColor: colorTema('--color-grafico-disney'),
               fill: false,
               tension: 0,
 
               // ==== PUNTOS ACTIVADOS ====
               pointRadius: 3,
               pointBackgroundColor: hexToRgbA(primaryColor, 1),
-              pointBorderColor: "#fff",
+              pointBorderColor: colorTema('--color-inverso'),
               pointBorderWidth: 1.8,
               pointHoverRadius: 7,
-              pointHoverBackgroundColor: "#fff",
+              pointHoverBackgroundColor: colorTema('--color-inverso'),
               pointHoverBorderColor: hexToRgbA(primaryColor, 1)
             }
           ]
@@ -82,13 +83,13 @@ let graficoReportesChart = null;
               display: true
             }, // ahora sí mostrar leyenda
             tooltip: {
-              backgroundColor: '#000',
+              backgroundColor: colorTema('--color-grafico-tooltip'),
               padding: 10,
               titleFont: {
-                size: 13
+                size: parseFloat(colorTema('--texto-sm'))
               },
               bodyFont: {
-                size: 12
+                size: parseFloat(colorTema('--texto-xs'))
               }
             }
           },
@@ -97,23 +98,23 @@ let graficoReportesChart = null;
             y: {
               beginAtZero: true,
               grid: {
-                color: "rgba(0,0,0,0.10)"
+                color: colorTema('--color-grafico-rejilla')
               },
               ticks: {
                 font: {
-                  size: 12
+                  size: parseFloat(colorTema('--texto-xs'))
                 }
               }
             },
             x: {
               grid: {
                 display: true,
-                color: "rgba(0,0,0,0.08)",
+                color: colorTema('--color-grafico-rejilla-suave'),
                 drawBorder: false
               },
               ticks: {
                 font: {
-                  size: 12
+                  size: parseFloat(colorTema('--texto-xs'))
                 }
               }
             }
@@ -189,15 +190,9 @@ let graficoReportesChart = null;
           const btn = document.createElement("button");
           btn.textContent = i;
 
-          btn.style.margin = "3px";
-          btn.style.padding = "6px 10px";
-          btn.style.border = "1px solid #ccc";
-          btn.style.borderRadius = "6px";
-          btn.style.background = (i === paginaActual) ?
-            "var(--color-primario)" :
-            "white";
-          btn.style.color = (i === paginaActual) ? "white" : "#333";
-          btn.style.cursor = "pointer";
+          btn.className = "btn btn-sm btn-outline-primary pagination-button";
+          btn.classList.toggle("is-active", i === paginaActual);
+          if (i === paginaActual) btn.setAttribute("aria-current", "page");
 
           btn.addEventListener("click", () => {
             paginaActual = i;
@@ -248,12 +243,9 @@ let graficoReportesChart = null;
       const btn = document.createElement("button");
       btn.textContent = texto;
     
-      btn.style.padding = "6px 10px";
-      btn.style.borderRadius = "6px";
-      btn.style.border = "1px solid #ccc";
-      btn.style.cursor = "pointer";
-      btn.style.background = activo ? "var(--color-primario)" : "white";
-      btn.style.color = activo ? "white" : "#333";
+      btn.className = "btn btn-sm btn-outline-primary pagination-button";
+      btn.classList.toggle("is-active", activo);
+      if (activo) btn.setAttribute("aria-current", "page");
     
       btn.addEventListener("click", () => {
         paginaActual = pagina;
@@ -281,9 +273,7 @@ let graficoReportesChart = null;
 
       const ctx = document.getElementById('graficoReportes').getContext('2d');
 
-      const primaryColor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-primario')
-        .trim() || 'rgba(13,110,253,1)';
+      const primaryColor = colorTema('--color-primario');
 
       function hexToRgbA(hex, alpha) {
         if (!hex.startsWith('#')) return hex;
@@ -313,16 +303,16 @@ let graficoReportesChart = null;
               label: "Netflix (Estoy de Viaje)",
               data: window.fmDashboard.valores1_clean_4l,
               borderWidth: 3,
-              borderColor: "rgba(243, 10, 10, 1)",
+              borderColor: colorTema('--color-grafico-netflix'),
               fill: false,
               tension: 0,
 
               pointRadius: 3,
               pointBackgroundColor: hexToRgbA(primaryColor, 1),
-              pointBorderColor: "#fff",
+              pointBorderColor: colorTema('--color-inverso'),
               pointBorderWidth: 1.8,
               pointHoverRadius: 7,
-              pointHoverBackgroundColor: "#fff",
+              pointHoverBackgroundColor: colorTema('--color-inverso'),
               pointHoverBorderColor: hexToRgbA(primaryColor, 1)
             },
 
@@ -331,16 +321,16 @@ let graficoReportesChart = null;
               label: "Disney (Acceso Unico)",
               data: window.fmDashboard.valores2_clean_4l,
               borderWidth: 3,
-              borderColor: "rgba(6, 17, 234, 1)",
+              borderColor: colorTema('--color-grafico-disney'),
               fill: false,
               tension: 0,
 
               pointRadius: 3,
               pointBackgroundColor: hexToRgbA(primaryColor, 1),
-              pointBorderColor: "#fff",
+              pointBorderColor: colorTema('--color-inverso'),
               pointBorderWidth: 1.8,
               pointHoverRadius: 7,
-              pointHoverBackgroundColor: "#fff",
+              pointHoverBackgroundColor: colorTema('--color-inverso'),
               pointHoverBorderColor: hexToRgbA(primaryColor, 1)
             },
 
@@ -349,16 +339,16 @@ let graficoReportesChart = null;
               label: "Netflix (Inicio Session)",
               data: window.fmDashboard.valores3_clean_4l,
               borderWidth: 3,
-              borderColor: "rgba(22, 163, 74, 1)",
+              borderColor: colorTema('--color-grafico-serie-3'),
               fill: false,
               tension: 0,
 
               pointRadius: 3,
               pointBackgroundColor: hexToRgbA(primaryColor, 1),
-              pointBorderColor: "#fff",
+              pointBorderColor: colorTema('--color-inverso'),
               pointBorderWidth: 1.8,
               pointHoverRadius: 7,
-              pointHoverBackgroundColor: "#fff",
+              pointHoverBackgroundColor: colorTema('--color-inverso'),
               pointHoverBorderColor: hexToRgbA(primaryColor, 1)
             },
 
@@ -367,16 +357,16 @@ let graficoReportesChart = null;
               label: "Soporte",
               data: window.fmDashboard.valores4_clean_4l,
               borderWidth: 3,
-              borderColor: "rgba(147, 51, 234, 1)",
+              borderColor: colorTema('--color-grafico-serie-4'),
               fill: false,
               tension: 0,
 
               pointRadius: 3,
               pointBackgroundColor: hexToRgbA(primaryColor, 1),
-              pointBorderColor: "#fff",
+              pointBorderColor: colorTema('--color-inverso'),
               pointBorderWidth: 1.8,
               pointHoverRadius: 7,
-              pointHoverBackgroundColor: "#fff",
+              pointHoverBackgroundColor: colorTema('--color-inverso'),
               pointHoverBorderColor: hexToRgbA(primaryColor, 1)
             }
 
@@ -392,13 +382,13 @@ let graficoReportesChart = null;
               display: true
             },
             tooltip: {
-              backgroundColor: '#000',
+              backgroundColor: colorTema('--color-grafico-tooltip'),
               padding: 10,
               titleFont: {
-                size: 13
+                size: parseFloat(colorTema('--texto-sm'))
               },
               bodyFont: {
-                size: 12
+                size: parseFloat(colorTema('--texto-xs'))
               }
             }
           },
@@ -407,23 +397,23 @@ let graficoReportesChart = null;
             y: {
               beginAtZero: true,
               grid: {
-                color: "rgba(0,0,0,0.10)"
+                color: colorTema('--color-grafico-rejilla')
               },
               ticks: {
                 font: {
-                  size: 12
+                  size: parseFloat(colorTema('--texto-xs'))
                 }
               }
             },
             x: {
               grid: {
                 display: true,
-                color: "rgba(0,0,0,0.08)",
+                color: colorTema('--color-grafico-rejilla-suave'),
                 drawBorder: false
               },
               ticks: {
                 font: {
-                  size: 12
+                  size: parseFloat(colorTema('--texto-xs'))
                 }
               }
             }
@@ -490,14 +480,9 @@ let graficoReportesChart = null;
           const btn = document.createElement("button");
           btn.textContent = i;
 
-          btn.style.padding = "6px 10px";
-          btn.style.borderRadius = "6px";
-          btn.style.border = "1px solid #ccc";
-          btn.style.cursor = "pointer";
-          btn.style.background = (i === paginaActual) ?
-            "var(--color-primario)" :
-            "white";
-          btn.style.color = (i === paginaActual) ? "white" : "#333";
+          btn.className = "btn btn-sm btn-outline-primary pagination-button";
+          btn.classList.toggle("is-active", i === paginaActual);
+          if (i === paginaActual) btn.setAttribute("aria-current", "page");
 
           btn.addEventListener("click", () => {
             paginaActual = i;
@@ -548,12 +533,9 @@ let graficoReportesChart = null;
       const btn = document.createElement("button");
       btn.textContent = texto;
     
-      btn.style.padding = "6px 10px";
-      btn.style.borderRadius = "6px";
-      btn.style.border = "1px solid #ccc";
-      btn.style.cursor = "pointer";
-      btn.style.background = activo ? "var(--color-primario)" : "white";
-      btn.style.color = activo ? "white" : "#333";
+      btn.className = "btn btn-sm btn-outline-primary pagination-button";
+      btn.classList.toggle("is-active", activo);
+      if (activo) btn.setAttribute("aria-current", "page");
     
       btn.addEventListener("click", () => {
         paginaActual = pagina;

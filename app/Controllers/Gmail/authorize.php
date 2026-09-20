@@ -1,6 +1,6 @@
 <?php
 
-session_start();
+\FMGlobal\Security\Session::start();
 
 require_once FM_ROOT . '/vendor/autoload.php';
 
@@ -50,6 +50,13 @@ $client->setPrompt(
 // REDIRECT GOOGLE
 // =====================================================
 
+$email=null;
+if (!empty($_POST['correo'])) {
+    $email=\FMGlobal\Support\Input::email($_POST);
+    $client->setLoginHint($email);
+}
+$client->setState(\FMGlobal\Security\OAuthState::create($email));
+
 $authUrl =
     $client->createAuthUrl();
 
@@ -58,4 +65,3 @@ header(
 );
 
 exit();
-

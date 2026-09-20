@@ -1,0 +1,112 @@
+/* Fuente unica del tema: panel, sitio publico, formularios y graficos.
+   Cambiar estos valores; los modulos no deben definir otra paleta. */
+:root {
+  --color-primario: #5f249d;
+  --color-secundario: #8244e3;
+  --color-acento: #20dce5;
+  --color-primario-hover: var(--color-secundario);
+  --color-fondo: #ffffff;
+  --color-texto: #1c1c1c;
+  --color-inverso: #ffffff;
+  --color-negro: #000000;
+  --color-texto-cuerpo: #333333;
+  --color-texto-fuerte: #444444;
+  --color-texto-secundario: #555555;
+  --color-texto-atenuado: #666666;
+  --color-texto-aviso: #aaaaaa;
+  --color-gris-claro: #f9f9f9;
+  --color-gris-fondo: #f8f8ff;
+  --color-fondo-panel: #f9fafc;
+  --color-fondo-correo: #f8f8f8;
+  --color-fondo-asesor: #f7f6ff;
+  --color-borde: #cccccc;
+  --color-divisor: #eeeeee;
+  --color-divisor-fuerte: #e0e0e0;
+  --color-fila-hover: #f4f8ff;
+  --color-exito: #27ae60;
+  --color-exito-hover: #1e8449;
+  --color-error: #e74c3c;
+  --color-error-hover: #c0392b;
+  --color-enlace-correo: #d9534f;
+  --color-enlace-correo-hover: #c9302c;
+  --color-salir: #dc3545;
+  --color-salir-hover: #c82333;
+  --color-aviso-fondo: #fff3cd;
+  --color-aviso-texto: #856404;
+  --color-aviso-borde: #ffeeba;
+  --color-whatsapp: #25d366;
+  --color-grafico-netflix: #f30a0a;
+  --color-grafico-disney: #0611ea;
+  --color-grafico-serie-3: #16a34a;
+  --color-grafico-serie-4: #9333ea;
+  --color-grafico-tooltip: var(--color-negro);
+  --color-grafico-rejilla: rgba(0, 0, 0, 0.10);
+  --color-grafico-rejilla-suave: rgba(0, 0, 0, 0.08);
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-overlay-modal: rgba(0, 0, 0, 0.55);
+  --color-borde-inverso: rgba(255, 255, 255, 0.1);
+
+  /* Poppins se usa si esta instalada; sin dependencia de una fuente remota. */
+  --fuente-principal: "Poppins", Arial, sans-serif;
+  --tamano-base: 16px;
+  --texto-xs: 12px;
+  --texto-sm: 13px;
+  --texto-control: 14px;
+  --texto-md: 15px;
+  --titulo-seccion: 24px;
+  --titulo-tarjeta: 20px;
+  --peso-regular: 400;
+  --peso-medio: 500;
+  --peso-negrita: 600;
+  --peso-fuerte: 700;
+  --radio-xs: 5px;
+  --radio-sm: 6px;
+  --radio-md: 8px;
+  --radio-lg: 10px;
+  --radio-tarjeta: 12px;
+  --radio-xl: 14px;
+  --radio-2xl: 16px;
+  --radio-pill: 20px;
+  --radio-borde: var(--radio-xs);
+  --radio-sitio: var(--radio-lg);
+  --radio-control: var(--radio-sm);
+  --espaciado-base: 1rem;
+  --espacio-xs: 5px;
+  --espacio-sm: 10px;
+  --espacio-md: 15px;
+  --espacio-lg: 20px;
+  --control-padding: 8px 10px;
+  --control-padding-compacto: 6px 10px;
+  --boton-padding: 7px 15px;
+  --tabla-padding: 8px 10px;
+  --tabla-padding-cabecera: 10px;
+  --tabla-padding-movil: 6px;
+  --sombra-suave: 0 2px 6px rgba(0, 0, 0, 0.1);
+  --sombra-media: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --sombra-tarjeta: 0 6px 20px rgba(0, 0, 0, 0.15);
+  --sombra-tarjeta-hover: 0 8px 25px rgba(0, 0, 0, 0.25);
+  --sombra-inicio: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --sombra-asesor: 0 4px 18px rgba(0, 0, 0, 0.10);
+  --sombra-imagen: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --sombra-formulario: 0 4px 15px rgba(0, 0, 0, 0.12);
+  --sombra-modal: 0 6px 25px rgba(0, 0, 0, 0.35);
+  --sombra-aviso: 0 0 10px rgba(0, 0, 0, 0.1);
+  --sombra-foco: 0 0 0 2px var(--color-secundario);
+  --sombra-salir: 0 4px 12px var(--color-salir);
+}
+
+/* Densidad y superficies empresariales. */
+:root {
+  --radio-empresa: 4px;
+  --espacio-empresa: 12px;
+  --separacion-empresa: 10px;
+  --alto-control-empresa: 32px;
+  --padding-control-empresa: 4px 8px;
+  --borde-empresa: #dfe3eb;
+  --fondo-empresa: #f3f5f8;
+  --sombra-empresa: 0 2px 6px rgb(24 32 56 / 4%);
+}
+
+:root { --color-chart-netflix: #dc3545; --color-chart-disney: #1769c2; }
+
+:root { --color-estado-activo: #38d979; --color-estado-inactivo: #ff5252; }

@@ -1,0 +1,20 @@
+<!doctype html><html><head><base href="/"><script id="cleanRoutes" type="application/json">{"inicio":"inicio","menuUsuarios":"usuarios"}</script></head><body>
+<button id="toggle-btn"></button><div id="sidebar"><button id="inicio" data-module="dashboard.php"></button><button id="menuUsuarios" data-module="usuario/usuarios.php"></button></div><div id="overlay"></div><div id="mantenedorUsuarios"></div>
+<script>window.fetch=async url=>({ok:true,status:200,text:async()=>String(url)});</script>
+<script src="/main.js"></script>
+<script>
+window.addEventListener('load',async()=>{
+ const wait=()=>new Promise(r=>setTimeout(r,100));
+ try {
+  await wait();
+  if(!location.pathname.endsWith('/sistema/usuarios')||!document.getElementById('mantenedorUsuarios').textContent.includes('usuario/usuarios.php'))throw Error('Direct URL');
+  document.getElementById('inicio').click(); await wait();
+  if(!location.pathname.endsWith('/sistema/inicio'))throw Error('Navigation');
+  history.back(); await wait();
+  if(!location.pathname.endsWith('/sistema/usuarios')||!document.getElementById('mantenedorUsuarios').textContent.includes('usuario/usuarios.php'))throw Error('Back');
+  history.forward(); await wait();
+  if(!location.pathname.endsWith('/sistema/inicio'))throw Error('Forward');
+  document.body.dataset.test='CLEAN_URL_PASS';
+ }catch(e){document.body.dataset.test='FAIL: '+e.message;}
+});
+</script></body></html>

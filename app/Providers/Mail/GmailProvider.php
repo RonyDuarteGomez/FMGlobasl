@@ -8,7 +8,7 @@ require_once FM_ROOT . '/vendor/autoload.php';
 use Google\Client;
 use Google\Service\Gmail;
 
-class GmailProvider
+class GmailProvider implements \FMGlobal\Contracts\MailProvider
 {
     // =====================================================
     // LIMPIAR BODY
@@ -106,7 +106,7 @@ class GmailProvider
         $correo,
         $password = '',
         $minutes = 15
-    ) {
+    ): array {
 
 
 
@@ -117,6 +117,7 @@ class GmailProvider
             // =====================================================
 
             $client = new Client();
+            $client->setHttpClient(new \GuzzleHttp\Client(['timeout'=>20,'connect_timeout'=>5]));
 
             $client->setAuthConfig(
                 FM_ROOT . '/config/credentials.json'
@@ -138,9 +139,14 @@ class GmailProvider
             // ACCESS TOKEN
             // =====================================================
 
-            $client->fetchAccessTokenWithRefreshToken(
-                $refreshToken
-            );
+            $accessToken = $client->fetchAccessTokenWithRefreshToken($refreshToken);
+            if (isset($accessToken['error'])) {
+                if ($accessToken['error']==='invalid_grant') {
+                    (new \FMGlobal\Repositories\GmailTokenRepository(database()))->invalidate($correo,$refreshToken);
+                    return ['ok'=>false,'message'=>'La autorización de Gmail venció o fue revocada. Actualiza el token.'];
+                }
+                return ['ok'=>false,'message'=>'No se pudo autorizar la consulta Gmail. Inténtalo nuevamente.'];
+            }
 
             // =====================================================
             // SERVICE
@@ -310,15 +316,14 @@ class GmailProvider
                 'data' => $resultadoFinal
             ];
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
 
             return [
 
                 'ok' => false,
 
-                'message' => $e->getMessage()
+                'message' => 'No se pudo consultar Gmail. Referencia: '.\FMGlobal\Support\Logger::exception($e, 'gmail.search')
             ];
         }
     }
 }
-

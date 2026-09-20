@@ -3,3 +3,6 @@ DirectoryIndex index.html
 <FilesMatch "(?i)(^error_log|\.(?:log|sql|zip|bak|env)$)">
     Require all denied
 </FilesMatch>
+
+RewriteEngine On
+RewriteRule ^(?:sistema(?:/.*)?|ingresar)$ clean.php [END]

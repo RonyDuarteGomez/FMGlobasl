@@ -1,5 +1,9 @@
 <?php
 return array (
+  'session.php' => 'app/Controllers/Auth/session.php',
+  'permisos/save.php' => 'app/Controllers/Permissions/save.php',
+  'permisos/index.php' => 'app/Controllers/Permissions/index.php',
+  'dashboard.php' => 'app/Controllers/Dashboard/summary.php',
   'home.php' => 'app/Controllers/Dashboard/home.php',
   'inicio.php' => 'app/Controllers/Reports/public.php',
   'login.php' => 'app/Controllers/Auth/login.php',

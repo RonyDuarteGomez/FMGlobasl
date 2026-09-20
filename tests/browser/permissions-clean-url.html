@@ -1,0 +1,13 @@
+<!doctype html><html><head><base href="/"><script id="cleanRoutes" type="application/json">{"inicio":"inicio","menuPermisos":"permisos"}</script></head><body>
+<button id="toggle-btn"></button><div id="sidebar"><button id="inicio" data-module="dashboard.php"></button><button id="menuPermisos" data-module="permisos/index.php"></button></div><div id="overlay"></div><div id="mantenedorUsuarios"></div>
+<script>window.fetch=async url=>({ok:true,status:200,text:async()=>String(url)});</script><script src="/main.js"></script>
+<script>
+window.addEventListener('load',()=>setTimeout(()=>{
+try {
+ if(location.search)throw Error('Query visible');
+ if(!document.getElementById('mantenedorUsuarios').textContent.includes('type=user&id=2'))throw Error('Selection lost');
+ if(!sessionStorage.getItem('reloaded')){sessionStorage.setItem('reloaded','1');location.reload();return;}
+ document.body.dataset.test='PERMISSIONS_CLEAN_PASS';
+}catch(e){document.body.dataset.test='FAIL '+e.message;}
+},150));
+</script></body></html>

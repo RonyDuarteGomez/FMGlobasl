@@ -1,18 +1,18 @@
 
 <div class="contenedor">
 
-    <h2><b>Generador de Link</b></h2>
+    <div class="module-heading"><h2>Generador de Link</h2><span class="module-category">Gestión</span></div>
 
     <div class="link-container">
 
-        <div class="link-form">
+        <div class="link-form card card-body">
 
-            <input
+            <input class="form-control form-control-sm"
                 type="text"
                 id="dato1"
                 placeholder="Ingrese NetflixId">
 
-            <input
+            <input class="form-control form-control-sm"
                 type="text"
                 id="dato2"
                 placeholder="Ingrese SecureNetflixId">
@@ -22,7 +22,7 @@
     <button
         type="button"
         id="btnGenerar"
-        class="btn-action btn-new"
+        class="btn-action btn-new btn btn-sm btn-primary"
         onclick="generarLink();">
 
         Generar Link
@@ -32,7 +32,7 @@
     <button
         type="button"
         id="btnLimpiar"
-        class="btn-action btn-new btn-delete"
+        class="btn-action btn-new btn-delete btn btn-sm btn-outline-danger"
         onclick="limpiarLink();">
 
         Limpiar
@@ -43,31 +43,26 @@
 
             <div class="link-resultado">
 
-                <input
+                <input class="form-control form-control-sm"
                     type="text"
                     id="resultado_link"
                     placeholder="link generado"
                     readonly>
-                    
-              
+
+
 
                 <button
     type="button"
     id="btnCopiar"
-    class="btn-action btn-edit btn-copy"
+    class="btn-action btn-edit btn-copy btn btn-sm btn-primary"
     onclick="copiarLink();">
 
     <i class="fa-solid fa-copy"></i>
 
 </button>
-     <div
-    id="fecha_expira"
-    style="
-        margin-top:8px;
-        color:#666;
-        font-size:14px;
-    ">
-</div> 
+     <div class="link-expiration"
+    id="fecha_expira">
+</div>
 
             </div>
 
@@ -76,4 +71,3 @@
     </div>
 
 </div>
-

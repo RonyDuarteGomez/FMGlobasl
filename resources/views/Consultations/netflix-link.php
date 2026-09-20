@@ -4,7 +4,7 @@
 
 <?php foreach ($lista as $item): ?>
 
-    <div class="tarjeta">
+    <div class="tarjeta card card-body">
 
         <p>
             <strong>Nombre:</strong>

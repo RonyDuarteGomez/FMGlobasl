@@ -1,0 +1,7 @@
+<?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+require dirname(__DIR__).'/bootstrap/app.php';
+$config=require FM_ROOT.'/config/database.php';
+if((!in_array($config['host'],['localhost','127.0.0.1'],true)||!str_ends_with($config['database'],'_local'))&&!in_array('--allow-deployment',$argv,true))throw new RuntimeException('Fuera de la base local se requiere --allow-deployment.');
+\FMGlobal\Repositories\PublicScheduleRepository::install(database());
+echo "Programación semanal preparada. Los horarios anteriores se conservaron como intervalos activos.\n";

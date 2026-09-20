@@ -2,7 +2,7 @@
 
 setlocale(LC_TIME, 'es_ES.UTF-8');
 
-session_start();
+\FMGlobal\Security\Session::start();
 
 $conexion = database();
 
@@ -31,8 +31,9 @@ if (
     isset($_POST['modo'])
 ) {
 
-    $_SESSION['modo'] =
-        $_POST['modo'];
+    $selectedMode=\FMGlobal\Support\Input::text($_POST,'modo',16,true);
+    if (!in_array($selectedMode,['netflix','disney'],true)) throw new \FMGlobal\Http\HttpException(422,'Modo no válido.');
+    $_SESSION['modo']=$selectedMode;
 }
 
 $modo =
@@ -60,69 +61,9 @@ if ($modo === 'disney') {
 // VALIDACIÓN HORARIO
 // =====================================================
 
-$fuera_de_horario = false;
-
-if (!isset($_SESSION['usuario'])) {
-
-    $dia_actual =
-        ucfirst(
-            strftime("%A")
-        );
-
-    $query = "
-        SELECT
-            hora_inicio,
-            hora_fin
-        FROM activacion
-        WHERE dia = ?
-        LIMIT 1
-    ";
-
-    $stmt =
-        $conexion->prepare($query);
-
-    $stmt->bind_param(
-        "s",
-        $dia_actual
-    );
-
-    $stmt->execute();
-
-    $result =
-        $stmt->get_result();
-
-    if (
-        $result
-        &&
-        $data = $result->fetch_assoc()
-    ) {
-
-        $hora_inicio =
-            (int)substr(
-                $data['hora_inicio'],
-                0,
-                2
-            );
-
-        $hora_fin =
-            (int)substr(
-                $data['hora_fin'],
-                0,
-                2
-            );
-
-        $hora_actual =
-            (int)date("H");
-
-        $fuera_de_horario =
-            (
-                $hora_actual >= $hora_inicio
-                &&
-                $hora_actual < $hora_fin
-            );
-    }
-}
-
+// Same public availability rule as the dashboard, independent of visitor session.
+$publicSchedule=(new \FMGlobal\Repositories\PublicScheduleRepository($conexion))->load();
+$fuera_de_horario=!\FMGlobal\Services\Schedules\WeeklySchedule::active($publicSchedule['week']);
 // =====================================================
 // VARIABLES
 // =====================================================
@@ -149,12 +90,9 @@ if (
     !$fuera_de_horario
 ) {
 
-    $correo =
-        trim(
-            $_POST['correo'] ?? ''
-        );
+    $correo = \FMGlobal\Support\Input::text($_POST, 'correo', 254);
 
-    if ($correo === "") {
+    if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
 
         $error =
             "Correo requerido.";
@@ -173,14 +111,8 @@ if (
                 'https://fmglobals.com/api/netflix_link.php?correo='
                 . urlencode($correo);
 
-            $response =
-                @file_get_contents($url);
-
-            $data =
-                json_decode(
-                    $response,
-                    true
-                );
+            try { $data=(new \FMGlobal\Services\Http\MailApiClient())->get($url); }
+            catch (\FMGlobal\Http\HttpException $e) { \FMGlobal\Support\Logger::exception($e,'mail-api.public'); $error=$e->getMessage(); $data=['data'=>[]]; }
 
             if (
                 !$data
@@ -188,8 +120,7 @@ if (
                 empty($data['data'])
             ) {
 
-                $error =
-                    "No se encontraron códigos.";
+                $error = $error ?: "No se encontraron códigos.";
 
             } else {
 
@@ -231,14 +162,8 @@ if (
                 'https://fmglobals.com/api/disney_otp.php?correo='
                 . urlencode($correo);
 
-            $response =
-                @file_get_contents($url);
-
-            $data =
-                json_decode(
-                    $response,
-                    true
-                );
+            try { $data=(new \FMGlobal\Services\Http\MailApiClient())->get($url); }
+            catch (\FMGlobal\Http\HttpException $e) { \FMGlobal\Support\Logger::exception($e,'mail-api.public'); $error=$e->getMessage(); $data=['data'=>[]]; }
 
             if (
                 !$data
@@ -246,8 +171,7 @@ if (
                 empty($data['data'])
             ) {
 
-                $error =
-                    "No se encontraron códigos.";
+                $error = $error ?: "No se encontraron códigos.";
 
             } else {
 

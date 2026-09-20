@@ -4,7 +4,7 @@
 
 <?php foreach ($lista as $item): ?>
 
-    <div class="tarjeta">
+    <div class="tarjeta card card-body">
 
         <p>
             <strong>Fecha:</strong>
@@ -14,17 +14,7 @@
         <?php if (!empty($item["codigo"])): ?>
 
             <div
-                class="codigo-disney"
-                style="
-                    color:#000;
-                    padding:10px 15px;
-                    border-radius:8px;
-                    font-size:1.4rem;
-                    font-weight:bold;
-                    text-align:center;
-                    width:100%;
-                    letter-spacing:2px;
-                "
+                class="codigo-disney codigo-otp"
             >
                 <?= htmlspecialchars($item["codigo"]) ?>
             </div>

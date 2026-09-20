@@ -1,0 +1,73 @@
+/* FM Globals skin. Vendor files are immutable; application tokens live in theme.css. */
+:root, [data-bs-theme="light"] {
+  --bs-primary: var(--color-primario);
+  --bs-link-color: var(--color-primario);
+  --bs-link-hover-color: var(--color-secundario);
+  --bs-body-font-family: var(--fuente-principal);
+  --bs-body-font-size: .875rem;
+  --bs-body-bg: var(--color-fondo);
+  --bs-body-color: var(--color-texto-cuerpo);
+  --bs-border-color: var(--borde-empresa);
+  --bs-border-radius: var(--radio-empresa);
+  --bs-border-radius-sm: var(--radio-empresa);
+  --lte-card-cap-bg: var(--color-fondo);
+}
+body { font-size: var(--bs-body-font-size); background: var(--fondo-empresa); }
+h2 { font-size: 1.35rem; font-weight: 600; margin-bottom: 12px; }
+h3 { font-size: 1rem; font-weight: 600; }
+.btn-primary { --bs-btn-bg: var(--color-primario); --bs-btn-border-color: var(--color-primario); --bs-btn-hover-bg: var(--color-secundario); --bs-btn-hover-border-color: var(--color-secundario); --bs-btn-active-bg: var(--color-primario); --bs-btn-active-border-color: var(--color-primario); --bs-btn-disabled-bg: var(--color-primario); --bs-btn-disabled-border-color: var(--color-primario); }
+.btn-outline-primary { --bs-btn-color: var(--color-primario); --bs-btn-border-color: var(--color-primario); --bs-btn-hover-bg: var(--color-primario); --bs-btn-hover-border-color: var(--color-primario); --bs-btn-active-bg: var(--color-primario); --bs-btn-active-border-color: var(--color-primario); }
+.card { --bs-card-spacer-y: var(--espacio-empresa); --bs-card-spacer-x: var(--espacio-empresa); --bs-card-bg: var(--color-fondo); --bs-card-border-radius: var(--radio-empresa); box-shadow: var(--sombra-empresa); min-width: 0; }
+.card.card-outline.card-primary { border-top-color: var(--color-primario); }
+.form-control, .form-select { min-height: var(--alto-control-empresa); font-size: .875rem; }
+.form-control { padding: var(--padding-control-empresa); }
+.form-control:focus, .form-select:focus { border-color: var(--color-secundario); box-shadow: 0 0 0 2px color-mix(in srgb,var(--color-primario) 20%,transparent); }
+.form-select { padding-top: 4px; padding-bottom: 4px; }
+.table { background: var(--color-fondo); font-size: .8125rem; margin-bottom: 0; }
+.table > :not(caption) > * > * { padding: 7px 10px; }
+.table thead { --bs-table-bg: var(--fondo-empresa); }
+.table th { font-weight: 600; white-space: nowrap; }
+.table-responsive { border: 1px solid var(--bs-border-color); border-radius: var(--radio-empresa); }
+:where(button,a,input,select,textarea,summary):focus-visible { outline: 2px solid var(--color-secundario); outline-offset: 2px; }
+.is-hidden { display: none !important; }
+.text-left { text-align: left; }
+.no-decoration { text-decoration: none; }
+.sin-margen { margin: 0; }
+.password-field { position: relative; }
+.password-field input { padding-right: 38px; }
+.password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; }
+.section-description, .eyebrow, .aviso, .link-expiration { color: var(--bs-secondary-color); }
+.section-description { margin: 12px 0; }
+.eyebrow { font-size: .7rem; letter-spacing: .1em; margin: 0; }
+.filtros, .tablaOpciones, .section-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
+.tablaOpciones, .section-toolbar { justify-content: space-between; }
+.filtros label { display: grid; gap: 4px; }
+.tablaOpciones input { max-width: 300px; }
+.tablaOpciones select { width: auto; }
+.paginacion { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 12px; }
+.pagination-button.is-active { background: var(--color-primario); color: var(--color-inverso); }
+/* Existing AJAX opens these dialogs; their content uses Bootstrap modal components. */
+.ModalGeneral { display: none; position: fixed; inset: 0; z-index: 2000; padding: 12px; background: var(--color-overlay-modal); justify-content: center; align-items: center; }
+.ModalGeneral .modal-content { width: 100%; max-width: 880px; max-height: calc(100dvh - 24px); overflow: hidden; }
+.ModalGeneral .modal-header, .ModalGeneral .modal-footer { padding: 8px 12px; flex-shrink: 0; }
+.ModalGeneral .modal-body { padding: var(--espacio-empresa); overflow-y: auto; }
+.ModalGeneral .modal-header { justify-content: space-between; }
+.ModalGeneral .modal-header h3 { margin: 0; }
+#cerrarModal { border: 0; background: transparent; cursor: pointer; font-size: 24px; min-width: 32px; color: var(--bs-secondary-color); }
+.tarjetas, .tarjetasSoporte { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: 12px; margin-top: 12px; }
+.tarjeta, .tarjetaSoporte { gap: 8px; overflow-wrap: anywhere; margin: 0; }
+.tarjeta p, .tarjetaSoporte p { margin: 0; }
+.tarjeta a { display: block; padding: 6px 10px; border: 1px solid var(--color-primario); border-radius: var(--radio-empresa); text-align: center; }
+.codigo-otp, .codigo-disney { font-size: 1.5rem; letter-spacing: .12em; font-weight: 600; }
+.correo-cuerpo { white-space: normal; overflow-wrap: anywhere; background: var(--fondo-empresa); padding: 12px; }
+@media (pointer: coarse) { .form-control, .form-select, .btn { min-height: 44px; } }
+@media print { .app-sidebar, .app-header, #overlay { display: none !important; } .app-wrapper { display: block !important; } .table-responsive { overflow: visible; } }
+/* Bootstrap utilities also follow the single brand color (no duplicated RGB palette). */
+.bg-primary, .text-bg-primary { background-color: var(--color-primario) !important; }
+.text-primary, .link-primary { color: var(--color-primario) !important; }
+.border-primary { border-color: var(--color-primario) !important; }
+.link-primary:hover { color: var(--color-secundario) !important; }
+.nav-pills { --bs-nav-pills-link-active-bg: var(--color-primario); }
+.pagination { --bs-pagination-color: var(--color-primario); --bs-pagination-active-bg: var(--color-primario); --bs-pagination-active-border-color: var(--color-primario); }
+.form-check-input:checked { background-color: var(--color-primario); border-color: var(--color-primario); }
+.progress { --bs-progress-bar-bg: var(--color-primario); }

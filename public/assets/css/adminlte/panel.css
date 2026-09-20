@@ -1,0 +1,37 @@
+/* AdminLTE grid shell, with the approved native details accordion. */
+.fm-panel .app-wrapper { grid-template-columns: auto minmax(0,1fr); }
+.fm-panel .app-sidebar { position: sticky; top: 0; width: 240px; height: 100dvh; min-width: 0; overflow-y: auto; background: var(--color-primario); color: var(--color-inverso); z-index: 1040; transition: width .2s; }
+.fm-panel .app-sidebar.collapsed { width: 70px; }
+.sidebar-brand { height: 56px; color: inherit; background: var(--color-secundario); font-size: 1.1rem; font-weight: 600; }
+.sidebar-brand .short { display: none; }
+.collapsed .sidebar-brand .full { display: none; }
+.collapsed .sidebar-brand .short { display: inline; }
+.grouped-menu { padding: 10px; }
+.grouped-menu .nav-item, .nav-group > summary { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 10px; border: 0; border-radius: var(--radio-empresa); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
+.nav-group { margin-top: 10px; }
+.nav-group > summary { list-style: none; font-weight: 600; }
+.nav-group > summary::-webkit-details-marker { display: none; }
+.nav-group > summary::after { content: '›'; margin-left: auto; }
+.nav-group[open] > summary::after { transform: rotate(90deg); }
+.nav-group > .nav-item { padding-left: 20px; font-size: .8125rem; }
+.grouped-menu .nav-item:hover, .nav-group > summary:hover, .grouped-menu [aria-current="page"] { background: var(--color-secundario); }
+.grouped-menu [aria-current="page"] { box-shadow: inset 3px 0 var(--color-acento); }
+.nav-icon { width: 20px; height: 20px; flex: 0 0 20px; }
+.collapsed .nav-label, .collapsed summary::after, .collapsed .nav-group > .nav-item { display: none; }
+.collapsed .grouped-menu .nav-item, .collapsed .nav-group > summary { justify-content: center; padding: 10px 0; }
+.fm-panel .app-header { min-height: 56px; padding: 8px 20px; display: flex; justify-content: space-between; }
+.user-info { display: flex; align-items: center; gap: 12px; }
+.user-info form { margin: 0; }
+.user-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-panel .app-main { padding: 16px 20px; }
+#overlay { display: none; }
+@media (max-width: 768px) {
+  .fm-panel .app-wrapper { grid-template-columns: minmax(0,1fr); grid-template-areas: 'lte-app-header' 'lte-app-main'; }
+  .fm-panel .app-sidebar { position: fixed; left: -240px; top: 0; transition: left .2s; }
+  .fm-panel .app-sidebar.active { left: 0; }
+  #overlay.active { display: block; position: fixed; inset: 0; background: var(--color-overlay-modal); z-index: 1035; }
+  .fm-panel .app-main { padding: 12px; }
+  .fm-panel .app-header { padding: 8px 12px; }
+  .user-name { max-width: 170px; }
+}
+@media (prefers-reduced-motion: reduce) { .fm-panel .app-sidebar { transition: none; } }

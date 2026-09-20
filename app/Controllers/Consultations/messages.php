@@ -2,7 +2,7 @@
 
 setlocale(LC_TIME, 'es_ES.UTF-8');
 
-session_start();
+\FMGlobal\Security\Session::start();
 
 if (!isset($_SESSION['usuario'])) {
 
@@ -21,10 +21,7 @@ header("Content-Type: text/html; charset=UTF-8");
 // OBTENER CORREO
 // =====================================================
 
-$correo =
-    trim(
-        $_POST["correo"] ?? ""
-    );
+$correo = \FMGlobal\Support\Input::email($_POST);
 
 if ($correo === "") {
 
@@ -51,25 +48,10 @@ $url =
     . '&password=' . urlencode($password)
     . '&minutes=' . $minutes;
 
-$response =
-    @file_get_contents($url);
-
-// =====================================================
-// VALIDAR RESPONSE API
-// =====================================================
-
-if ($response === false) {
-
-    echo "<p>Error: No se pudo consumir la API.</p>";
-
-    exit;
-}
-
-$data =
-    json_decode(
-        $response,
-        true
-    );
+$data = (new \FMGlobal\Services\Mail\SupportConsultation(
+    new \FMGlobal\Services\Http\MailApiClient(),
+    new \FMGlobal\Repositories\UsageRepository($conexion)
+))->search($url,$correo,$_SESSION['usuario']);
 
 if (
     !$data
@@ -115,22 +97,4 @@ foreach (
 }
 
 // =====================================================
-// INSERT USO SERVICIO
-// =====================================================
-
-// tipo fijo soporte/correos
-$tipo = 6;
-
-// contar correos encontrados
-$num_urls =
-    count($lista);
-
-// usuario sesión
-$usuario_sesion =
-    $_SESSION['usuario'] ?? null;
-
-// insert
-(new \FMGlobal\Repositories\UsageRepository($conexion))->register($correo, $num_urls, $usuario_sesion, $tipo);
-
-
 require FM_ROOT . '/resources/views/Consultations/messages.php';

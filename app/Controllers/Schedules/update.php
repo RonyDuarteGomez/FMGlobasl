@@ -1,27 +1,9 @@
 <?php
-$conexion = database();
-
-$id          = $_POST['id'] ?? '';
-$dia         = $_POST['dia'] ?? '';
-$hora_inicio = $_POST['hora_inicio'] ?? '';
-$hora_fin    = $_POST['hora_fin'] ?? '';
-$usuario     = 'admin'; // o el usuario actual
-
-if (!$id || !$dia) {
-  echo "0";
-  exit;
-}
-
-// 🔹 Convertimos "19" → "19:00:00"
-$hora_inicio = str_pad($hora_inicio, 2, "0", STR_PAD_LEFT) . ":00:00";
-$hora_fin    = str_pad($hora_fin, 2, "0", STR_PAD_LEFT) . ":00:00";
-
-$stmt = $conexion->prepare("
-  UPDATE activacion
-  SET hora_inicio = ?, hora_fin = ?, usuario_registro = ?, fecha_registro = NOW()
-  WHERE id = ?
-");
-
-$stmt->bind_param("sssi", $hora_inicio, $hora_fin, $usuario, $id);
-
-echo $stmt->execute() ? "1" : "0";
+$raw=$_POST['schedule']??null;
+if(!is_string($raw)||strlen($raw)>20000)throw new \FMGlobal\Http\HttpException(422,'Programación no válida.');
+try{$week=json_decode($raw,true,32,JSON_THROW_ON_ERROR);}catch(\JsonException $e){throw new \FMGlobal\Http\HttpException(422,'Programación no válida.');}
+$revision=filter_var($_POST['revision']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+if($revision===false||$revision===null)throw new \FMGlobal\Http\HttpException(422,'Versión de programación no válida.');
+$saved=(new \FMGlobal\Repositories\PublicScheduleRepository(database()))->save($week,$revision,$_SESSION['usuario']);
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode(['success'=>true,'revision'=>$saved['revision'],'active'=>\FMGlobal\Services\Schedules\WeeklySchedule::active($saved['week']),'message'=>'Programación guardada.']);

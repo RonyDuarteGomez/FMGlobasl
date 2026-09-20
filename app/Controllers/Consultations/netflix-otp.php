@@ -2,7 +2,7 @@
 
 setlocale(LC_TIME, 'es_ES.UTF-8');
 
-session_start();
+\FMGlobal\Security\Session::start();
 
 if (!isset($_SESSION['usuario'])) {
 
@@ -21,10 +21,7 @@ header("Content-Type: text/html; charset=UTF-8");
 // OBTENER CORREO
 // =====================================================
 
-$correo =
-    trim(
-        $_POST["correo"] ?? ""
-    );
+$correo = \FMGlobal\Support\Input::email($_POST);
 
 if ($correo === "") {
 
@@ -41,25 +38,7 @@ $url =
     'https://fmglobals.com/api/netflix_otp.php?correo='
     . urlencode($correo);
 
-$response =
-    @file_get_contents($url);
-
-// =====================================================
-// VALIDAR RESPONSE API
-// =====================================================
-
-if ($response === false) {
-
-    echo "<p>Error: No se pudo consumir la API.</p>";
-
-    exit;
-}
-
-$data =
-    json_decode(
-        $response,
-        true
-    );
+$data = (new \FMGlobal\Services\Http\MailApiClient())->get($url);
 
 if (
     !$data

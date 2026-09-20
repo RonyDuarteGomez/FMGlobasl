@@ -3,7 +3,7 @@ date_default_timezone_set(
     'America/Lima'
 );
 
-class ImapProvider
+class ImapProvider implements \FMGlobal\Contracts\MailProvider
 {
     private $hostname;
 
@@ -59,7 +59,7 @@ class ImapProvider
         $correo,
         $password,
         $minutes = 15
-    ) {
+    ): array {
 
         $resultado = [];
 
@@ -94,6 +94,8 @@ class ImapProvider
         // OBTENER TODOS LOS CORREOS
         // =====================================================
 
+        try {
+        imap_errors(); // Limpiar errores anteriores antes de distinguir un buzon vacio.
         $emails = imap_search(
             $inbox,
             'ALL'
@@ -101,11 +103,11 @@ class ImapProvider
 
         if (!$emails) {
 
-            imap_close($inbox);
+            if (imap_errors()) throw new \RuntimeException('Fallo de busqueda IMAP.');
 
             return [
-                'ok' => false,
-                'message' => 'No se encontraron correos'
+                'ok' => true,
+                'total' => 0, 'data' => []
             ];
         }
 
@@ -148,50 +150,50 @@ class ImapProvider
             // =====================================================
             // NORMALIZAR FECHA
             // =====================================================
-            
+
             // LIMPIAR TIMEZONE EXTRA
             $dateOriginal =
                 trim($overview->date ?? '');
-            
+
             // SI NO HAY FECHA
             if (empty($dateOriginal)) {
                 continue;
             }
-            
+
             // LIMPIAR TIMEZONE EXTRA
             $dateLimpia = preg_replace(
                 '/\s+\([^)]+\)$/',
                 '',
                 $dateOriginal
             );
-            
+
             // VALIDAR PARSE
             try {
-            
+
                 $dateObject =
                     new DateTime($dateLimpia);
-            
+
             } catch (Exception $e) {
-            
+
                 // FECHA INVÁLIDA
                 continue;
             }
-            
+
             // CONVERTIR A LIMA
             $dateObject->setTimezone(
                 new DateTimeZone('America/Lima')
             );
-            
+
             // TIMESTAMP REAL
             $fechaCorreo = $dateObject->getTimestamp() + (2 * 60 * 60);
-            
+
             // =====================================================
             // VALIDAR TIEMPO REAL
             // =====================================================
-            
+
             $limiteTiempo =
                 time() - ($minutes * 60);
-            
+
             if ($fechaCorreo < $limiteTiempo) {
                 continue;
             }
@@ -293,12 +295,15 @@ class ImapProvider
             ];
         }
 
-        imap_close($inbox);
+
 
         return [
             'ok' => true,
             'total' => count($resultado),
             'data' => $resultado
         ];
+        } catch (\Throwable $e) {
+            return ['ok'=>false,'message'=>'No se pudo consultar el correo. Referencia: '.\FMGlobal\Support\Logger::exception($e,'imap.search')];
+        } finally { imap_close($inbox); imap_errors(); }
     }
 }

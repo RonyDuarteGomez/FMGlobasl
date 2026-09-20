@@ -5,6 +5,8 @@
 
 class NetflixOtpService
 {
+    public function __construct(private ?CorreoService $correoService = null) { $this->correoService ??= new CorreoService(); }
+
     public function buscarOtp(
         $proveedor,
         $correo,
@@ -17,7 +19,7 @@ class NetflixOtpService
         // =====================================================
 
         $correoService =
-            new CorreoService();
+            $this->correoService;
 
         $response =
             $correoService->buscarCorreos(
@@ -31,20 +33,8 @@ class NetflixOtpService
         // VALIDAR RESPONSE
         // =====================================================
 
-        if (
-            !$response['ok']
-            ||
-            empty($response['data'])
-        ) {
-
-            return [
-
-                'ok' => false,
-
-                'message' =>
-                    'No se encontraron correos'
-            ];
-        }
+        if (!$response['ok']) return $response;
+        if (empty($response['data'])) return ['ok'=>true,'total'=>0,'data'=>[]];
 
         // =====================================================
         // SUBJECTS NETFLIX OTP
@@ -111,7 +101,7 @@ class NetflixOtpService
 
                 'date' =>
                     $correoData['date'],
-                
+
                 'from' =>
                     $correoData['from'],
 
@@ -120,7 +110,7 @@ class NetflixOtpService
 
                 'codigo' =>
                     $codigo,
-                
+
                 'link' =>
                     null
             ];

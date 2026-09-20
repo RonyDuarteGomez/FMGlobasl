@@ -5,6 +5,8 @@
 
 class NetflixLinkService
 {
+    public function __construct(private ?CorreoService $correoService = null) { $this->correoService ??= new CorreoService(); }
+
     public function buscarLinks(
         $proveedor,
         $correo,
@@ -17,7 +19,7 @@ class NetflixLinkService
         // =====================================================
 
         $correoService =
-            new CorreoService();
+            $this->correoService;
 
         $response =
             $correoService->buscarCorreos(
@@ -26,28 +28,16 @@ class NetflixLinkService
                 $password,
                 $minutes
             );
-            
-    
+
+
 
         // =====================================================
         // VALIDAR RESPONSE
         // =====================================================
 
-        
-        if (
-            !$response['ok']
-            ||
-            empty($response['data'])
-        ) {
 
-            return [
-
-                'ok' => false,
-
-                'message' =>
-                    'No se encontraron correos'
-            ];
-        }
+        if (!$response['ok']) return $response;
+        if (empty($response['data'])) return ['ok'=>true,'total'=>0,'data'=>[]];
 
         // =====================================================
         // SUBJECTS NETFLIX
@@ -96,11 +86,11 @@ class NetflixLinkService
             if (empty($link)) {
                 continue;
             }
-            
+
             // =====================================================
             // EXTRAER NOMBRE
             // =====================================================
-            
+
             $nombre =
                 RegexHelper::extraerNombreNetflix(
                     $correoData['body']
@@ -120,10 +110,10 @@ class NetflixLinkService
 
                 'date' =>
                     $correoData['date'],
-                    
-                'nombre' => 
+
+                'nombre' =>
                     $nombre,
-                
+
                 'codigo' =>
                     null,
 

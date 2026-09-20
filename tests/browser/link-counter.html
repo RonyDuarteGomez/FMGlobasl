@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><title>Link counter test</title>
+<input id="dato1" value="test-cookie-a"><input id="dato2" value="test-cookie-b"><input id="resultado_link"><div id="fecha_expira"></div><pre id="results"></pre>
+<script>function fmCsrfToken(){return 'test-csrf';}window.alert=()=>{};</script>
+<script src="../../public/assets/js/link.js"></script>
+<script>
+(async()=>{
+const results=[],calls=[];const check=(name,ok)=>{results.push({name,ok:!!ok});if(!ok)throw new Error(name);};
+let apiSuccess=true,recordSuccess=true;
+window.fetch=async(url,options)=>{
+ calls.push({url,options});
+ if(url.startsWith('https:'))return {ok:true,json:async()=>({status:apiSuccess?'success':'error',login_url:'https://example.test/link',expires_at:'test'})};
+ return {ok:recordSuccess};
+};
+try {
+ await generarLink();
+ check('Only successful generation records once',calls.length===2&&calls[1].options.body.toString()==='event=generated');
+ check('CSRF stays local',!calls[0].options.headers['X-CSRF-Token']&&calls[1].options.headers['X-CSRF-Token']==='test-csrf');
+ check('No cookies or URL in telemetry',!calls[1].options.body.toString().includes('test-cookie')&&!calls[1].options.body.toString().includes('https'));
+ calls.length=0;apiSuccess=false;await generarLink();check('Failed generation not counted',calls.length===1);
+ apiSuccess=true;recordSuccess=false;await generarLink();check('Recording failure keeps link visible',document.getElementById('resultado_link').value==='https://example.test/link'&&document.getElementById('fecha_expira').textContent.includes('no se pudo registrar'));
+ limpiarLink();check('Clear still works',document.getElementById('resultado_link').value==='');
+ document.title='LINK_COUNTER_PASS';
+} catch(error){results.push({name:error.message,ok:false});document.title='LINK_COUNTER_FAIL';}
+document.getElementById('results').textContent=JSON.stringify(results);
+})();
+</script>

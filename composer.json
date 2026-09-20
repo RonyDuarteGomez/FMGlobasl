@@ -15,6 +15,10 @@
         ]
     },
     "scripts": {
-        "test": "@php tests/structure.php"
+        "test": [
+            "@php tests/structure.php",
+            "@php tests/backend.php"
+        ],
+        "test:integration": "@php tests/backend-integration.php"
     }
 }

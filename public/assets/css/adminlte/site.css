@@ -1,0 +1,56 @@
+/* Public pages use the same AdminLTE cards, controls and brand skin. */
+.header { background: var(--color-primario); color: var(--color-inverso); position: sticky; top: 0; z-index: 1030; }
+.header .container { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; }
+.logo h1 { font-size: 1.3rem; margin: 0; }
+.logo span { color: var(--color-acento); }
+.header .nav { display: flex; align-items: center; gap: 12px; }
+.header .nav ul { display: flex; gap: 16px; list-style: none; padding: 0; margin: 0; }
+.header .nav a { color: inherit; text-decoration: none; }
+.header .btn-ingresar { border-color: var(--color-inverso); }
+.btn-menu { display: none; background: transparent; border: 0; color: inherit; font-size: 1.3rem; }
+.inicio-container, .nosotros-container, .container-equipo { max-width: 1200px; width: 100%; margin: auto; padding: 24px 12px; }
+.grid-productos { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px; }
+.producto { align-items: center; text-align: center; margin: 0; }
+.producto img { width: 100px; height: 100px; object-fit: contain; max-width: 100%; }
+.grid-equipo { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 12px; }
+.miembro { flex-direction: row; gap: 12px; align-items: center; margin: 0; }
+.miembro img { width: 64px; height: 64px; object-fit: cover; border-radius: 50%; }
+.miembro p, .miembro h3 { margin-bottom: 4px; }
+.wsp { font-size: 1.7rem; color: var(--color-whatsapp); }
+.nosotros-container { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.nosotros-imagen img { width: 100%; height: 100%; object-fit: cover; }
+.mision-vision { display: flex; gap: 16px; }
+footer { background: var(--color-primario); color: var(--color-inverso); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px; }
+.footer-redes { display: flex; gap: 12px; }
+.footer-redes a { color: inherit; }
+#login { min-height: 100dvh; display: grid; place-items: center; padding: 16px; }
+.container-login { width: 100%; max-width: 400px; padding: 24px; }
+.container-login h2 { text-align: center; }
+.container-login form { display: grid; gap: 12px; }
+.container-login label { margin-bottom: 4px; }
+.btn-login { width: 100%; }
+#valida { padding: 24px 12px; min-height: calc(100dvh - 140px); }
+#valida form:not(.selector-opcion):not(.is-hidden) { max-width: 460px; margin: 12px auto; display: grid; gap: 10px; }
+#valida h2 { text-align: center; }
+.selector-container { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.selector-opcion { max-width: 400px; flex: 1 1 250px; }
+.selector-submit { border: 0; padding: 0; background: transparent; width: 100%; }
+.selector-opcion img { width: 100%; border-radius: var(--radio-empresa); }
+.aviso-horario { padding: 20px; max-width: 500px; margin: 40px auto; background: var(--color-aviso-fondo); color: var(--color-aviso-texto); border: 1px solid var(--color-aviso-borde); border-radius: var(--radio-empresa); }
+@media (max-width: 700px) {
+  .btn-menu { display: block; }
+  .header .nav { display: none; position: absolute; right: 0; top: 100%; padding: 16px; background: var(--color-primario); }
+  .header .nav.active, .header .nav ul { display: flex; flex-direction: column; align-items: flex-start; }
+  .nosotros-container { grid-template-columns: minmax(0,1fr); }
+  .mision-vision { flex-direction: column; }
+}
+.fm-login { min-height:100dvh; padding:24px 16px; background:var(--bs-tertiary-bg); }
+.fm-login .login-box { width:100%; max-width:390px; }
+.fm-login .login-logo { font-size:1.8rem; color:var(--color-primario); margin-bottom:20px; }
+.fm-login .login-logo span { font-weight:700; }
+.fm-login .card-header { padding:18px 24px; }
+.fm-login .login-card-body { padding:24px; color:var(--bs-body-color); }
+.fm-login .form-label { font-size:.875rem; margin-bottom:6px; }
+.fm-login .form-control, .fm-login .input-group-text { min-height:40px; }
+.fm-login .input-group-text { color:var(--color-primario); background:var(--bs-tertiary-bg); }
+.fm-login .login-administrator-note { text-align:center; color:var(--bs-secondary-color); font-size:.75rem; margin:16px 0 0; }
