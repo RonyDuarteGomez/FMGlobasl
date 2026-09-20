@@ -34,6 +34,7 @@ try{
  $db=new mysqli($config['host'],$config['user'],$config['password'],$testDb);$db->set_charset('utf8mb4');
  $db->query("INSERT INTO rol(rol_id,rol_nombre) VALUES(1,'Administrador'),(2,'Asesor'),(3,'Soporte')");
  \FMGlobal\Repositories\PermissionMigration::apply($db);
+ \FMGlobal\Repositories\LinkAccountMigration::apply($db);
  \FMGlobal\Repositories\GmailMigration::apply($db);
  \FMGlobal\Repositories\GmailMigration::apply($db);
  $gmail=new \FMGlobal\Repositories\GmailTokenRepository($db);
@@ -154,15 +155,16 @@ try{
    $response=http($adminBrowser,'permisos/save.php','POST',['_csrf'=>$csrf,'type'=>$type,'id'=>$id,'revision'=>$revision??$permissionRepo->revision(),'permissions'=>array_replace($values,$overrides)]); if ($response['status']===200) $permissionWrites++; return $response;
  };
  foreach([['test_asesor','advisor.only@example.com',3],['test_soporte','support.only@example.com',6],['test_admin','admin.secret@example.com',3],[null,'public.secret@example.com',1]] as [$who,$email,$operation]) $db->execute_query('INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,streaming) VALUES(?,1,NOW(),?,?)',[$email,$who,$operation]);
+ \FMGlobal\Repositories\UsageUserMigration::apply($db);
  verify(http($probe,'dashboard.php')['status']===401,'Dashboard exige sesión');
  $dash=http($advisor,'dashboard.php')['body'];
- $advisorDashboard=(new \FMGlobal\Services\Reports\PersonalDashboard(new \FMGlobal\Repositories\ActivityRepository($db)))->build($permissionRepo->effective($advisorId),'test_asesor');
+ $advisorDashboard=(new \FMGlobal\Services\Reports\PersonalDashboard(new \FMGlobal\Repositories\ActivityRepository($db)))->build($permissionRepo->effective($advisorId),$advisorId);
  verify((int)$advisorDashboard['summary']['total']===1 && $advisorDashboard['cards'][0]['mix']===['netflix'=>1,'disney'=>0] && !str_contains($dash,'@example.com'),'Dashboard agregado de asesor solo cuenta actividad propia autorizada');
  $dash=http($support,'dashboard.php')['body'];verify(str_contains($dash,'Consultas soporte') && !str_contains($dash,'@example.com') && !str_contains($dash,'Consultas asesores'),'Dashboard soporte sin tablas ni actividad de asesor');
  $activity=new \FMGlobal\Repositories\ActivityRepository($db);
  verify($activity->platforms([1,2],null)===['netflix'=>1,'disney'=>0],'Distribución pública excluye asesor');
- $db->execute_query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,streaming) VALUES('',1,NOW(),'test_asesor',4),('',1,DATE_SUB(NOW(),INTERVAL 31 DAY),'test_asesor',4)");
- verify($activity->platforms([3,4,5],'test_asesor')===['netflix'=>1,'disney'=>1],'Mezcla distingue plataformas y excluye registros antiguos');
+ $db->execute_query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,usuario_id,streaming) VALUES('',1,NOW(),'test_asesor',?,4),('',1,DATE_SUB(NOW(),INTERVAL 31 DAY),'test_asesor',?,4)",[$advisorId,$advisorId]);
+ verify($activity->platforms([3,4,5],$advisorId)===['netflix'=>1,'disney'=>1],'Mezcla distingue plataformas y excluye registros antiguos');
  verify(http($probe,'soporte/link.php','POST',['event'=>'generated'])['status']===401,'Registro de link exige sesión');
  verify(http($advisor,'mantenimiento_gmail.php','POST',['_csrf'=>$advisorCsrf,'id'=>$gmailId])['status']===403,'Baja Gmail exige permiso');
  verify(http($adminBrowser,'mantenimiento_gmail.php','POST',['id'=>$gmailId])['status']===419,'Baja Gmail exige CSRF');
@@ -172,19 +174,42 @@ try{
  verify(http($advisor,'soporte/link.php','POST',['_csrf'=>$advisorCsrf,'event'=>'generated'])['status']===403,'Registro de link exige permiso');
  verify(http($adminBrowser,'soporte/link.php','POST',['event'=>'generated'])['status']===419,'Registro de link exige CSRF');
  verify(http($adminBrowser,'soporte/link.php','POST',['_csrf'=>$csrf,'event'=>'other'])['status']===422,'Registro rechaza eventos desconocidos');
- verify(http($adminBrowser,'soporte/link.php','POST',['_csrf'=>$csrf,'event'=>'generated'])['status']===200,'Registra generación exitosa');
- verify((int)$activity->summary([7],'test_admin')['total']===1 && (int)$activity->summary([7],'test_asesor')['total']===0,'Contador de links respeta usuario');
+ verify(http($adminBrowser,'soporte/link.php','POST',['_csrf'=>$csrf,'event'=>'generated'])['status']===422,'No acepta generaciones declaradas por el navegador');
+ $linkRepo=new \FMGlobal\Repositories\LinkAccountRepository($db,new \FMGlobal\Services\Links\AccountVault());
+ $accountId=$linkRepo->save($adminId,['external_id'=>'synthetic-id','secure'=>'synthetic-secure','credentials'=>'link@example.test:synthetic-password']);
+ $generation=$linkRepo->beginGeneration($adminId,$accountId);
+ $linkRepo->finishGeneration($adminId,$accountId,$generation['token'],true);
+ verify(http($adminBrowser,'soporte/link.php?action=list')['status']===200,'Administrador lista cuentas');
+ verify(http($adminBrowser,'soporte/link.php?action=template')['status']===200,'Administrador descarga CSV modelo');
+ verify((int)$activity->summary([7],$adminId)['total']===1 && (int)$activity->summary([7],$advisorId)['total']===0,'Contador de links respeta usuario');
  $builder=new \FMGlobal\Services\Reports\PersonalDashboard($activity);
- $ownSupport=$builder->build(['services.support'=>true,'activity.own'=>true],'test_soporte');
+ $ownSupport=$builder->build(['services.support'=>true,'activity.own'=>true],$supportId);
  verify(count($ownSupport['cards'])===1 && $ownSupport['cards'][0]['destination']==='soporteMenu' && (int)$ownSupport['cards'][0]['summary']['total']===1,'Solo soporte muestra una tarjeta con actividad propia');
- $ownLinks=$builder->build(['services.links'=>true,'activity.own'=>true],'test_asesor');
+ $ownLinks=$builder->build(['services.links'=>true,'activity.own'=>true],$advisorId);
  verify($ownLinks['cards']===[],'Home no muestra card de links');
- $none=$builder->build([],'test_asesor');
- verify($none['cards']===[] && $none['showActivation'] && $none['activation']===$ownSupport['activation'],'Estado de activación común incluso sin servicios autorizados');
- verify(str_contains(http($advisor,'dashboard.php')['body'],'activation-indicator') && str_contains(http($advisor,'dashboard.php')['body'],'dashboard-single'),'Asesor recibe estado público y tarjeta sin hueco lateral');
+ foreach([['services.activation','reports.public','Consultas clientes'],['services.advisor','reports.internal','Consultas asesores'],['services.support','reports.support','Consultas soporte']] as [$module,$report,$title]) {
+  foreach([[true,false],[false,true],[true,true],[false,false]] as [$hasModule,$hasReport]) {
+   $cards=$builder->build([$module=>$hasModule,$report=>$hasReport],$advisorId)['cards'];
+   verify(count($cards)===(int)($hasModule||$hasReport),'Tarjeta OR módulo/reporte: '.$title);
+   if($cards){verify($cards[0]['canReport']===$hasReport,'Detalle solo con reporte: '.$title);verify($cards[0]['visible'] && isset($cards[0]['summary']),'Estadísticas sin permiso heredado: '.$title);}
+  }
+ }
+ $limited=$builder->build(['services.advisor'=>true,'activity.all'=>true],$advisorId);
+ verify($limited['cards'][0]['summary']['total']==2,'activity.all no amplía datos sin perfil administrador');
+ $none=$builder->build([],$advisorId);
+ verify($none['cards']===[] && !$none['showActivation'] && $none['activation']===$ownSupport['activation'],'Estado de activación común incluso sin servicios autorizados');
+ verify(!str_contains(http($advisor,'dashboard.php')['body'],'activation-indicator') && str_contains(http($advisor,'dashboard.php')['body'],'dashboard-overview'),'Asesor recibe estado público y tarjetas en la cuadrícula común');
  verify(http($advisor,'activacion/activacion.php')['status']===403,'Ver estado no concede permiso de administrar activación');
+ verify(http($advisor,'dashboard.php?report=advisor')['status']===403,'Servicio asesor no concede acceso a su reporte');
+ verify(!str_contains(http($advisor,'home.php')['body'],'id="reportesMenu"'),'Menú oculta reporte sin permiso');
+ verify(!str_contains(http($advisor,'dashboard.php')['body'],'report=advisor'),'Dashboard oculta enlace sin permiso');
+ $db->execute_query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,'reports.internal',1)",[$advisorId]);
  $ownReport=http($advisor,'dashboard.php?report=advisor&usuario=test_admin');
- verify($ownReport['status']===200 && str_contains($ownReport['body'],'advisor.only@example.com') && !str_contains($ownReport['body'],'admin.secret@example.com'),'Detalle de asesor respeta usuario sin permiso de reporte global');
+ verify($ownReport['status']===200 && str_contains($ownReport['body'],'advisor.only@example.com') && !str_contains($ownReport['body'],'admin.secret@example.com'),'Permiso individual habilita reporte con alcance propio');
+ verify(str_contains(http($advisor,'home.php')['body'],'id="reportesMenu"'),'Menú refleja permiso concedido');
+ $db->execute_query("UPDATE fm_user_permissions SET allowed=0 WHERE user_id=? AND permission_code='reports.internal'",[$advisorId]);
+ verify(http($advisor,'dashboard.php?report=advisor')['status']===403,'Denegación individual bloquea reporte inmediatamente');
+ $db->execute_query("DELETE FROM fm_user_permissions WHERE user_id=? AND permission_code='reports.internal'",[$advisorId]);
  verify(http($advisor,'soporte/reportes.php')['status']===403,'Detalle propio no concede permiso del reporte interno general');
  verify(http($advisor,'dashboard.php?report=support')['status']===403,'Detalle rechaza servicio ajeno');
  verify(http($probe,'dashboard.php?report=links')['status']===401,'Detalle de links exige sesión');
@@ -192,10 +217,15 @@ try{
  $supportReport=http($support,'dashboard.php?report=support');
  verify($supportReport['status']===200 && str_contains($supportReport['body'],'support.only@example.com') && !str_contains($supportReport['body'],'advisor.only@example.com'),'Detalle de soporte incluye únicamente su servicio y usuario');
  $linkReport=http($adminBrowser,'dashboard.php?report=links');
- verify($linkReport['status']===200 && str_contains($linkReport['body'],'test_admin') && str_contains($linkReport['body'],'Link Netflix') && !str_contains($linkReport['body'],'advisor.only@example.com'),'Reporte de links muestra generación registrada y usuario');
+ verify($linkReport['status']===200 && str_contains($linkReport['body'],'Prueba Prueba') && str_contains($linkReport['body'],'Consultas link') && !str_contains($linkReport['body'],'advisor.only@example.com'),'Reporte de links muestra generación registrada y usuario');
+ verify(http($advisor,'dashboard.php?report=links')['status']===403,'Reporte exige permiso propio');
+ $db->execute_query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,'reports.links',1)",[$advisorId]);
+ $advisorLinks=http($advisor,'dashboard.php?report=links');
+ verify($advisorLinks['status']===200 && !str_contains($advisorLinks['body'],'link@example.test'),'Permiso individual permite reporte solo propio');
+ $db->execute_query("DELETE FROM fm_user_permissions WHERE user_id=? AND permission_code='reports.links'",[$advisorId]);
  $next=http($adminBrowser,'dashboard.php?report=links&days=7&page=2')['body'];
- verify(str_contains($next,'name="report" value="links"') && str_contains($next,'report=links&amp;days=7&amp;page=1'),'Filtro y paginación conservan tipo de reporte');
- verify(str_contains(http($advisor,'dashboard.php')['body'],'data-load-url="dashboard.php?report=advisor"'),'Tarjeta de asesor abre reporte detallado');
+ verify(str_contains($next,'name="report" value="links"') && str_contains($next,'value="7" selected'),'Filtro y paginación conservan tipo de reporte');
+ verify(!str_contains(http($advisor,'dashboard.php')['body'],'data-load-url="dashboard.php?report=advisor"'),'Tarjeta sin permiso no abre reporte detallado');
  verify(http($advisor,'permisos/index.php')['status']===403,'Asesor no gestiona permisos');
  verify(http($adminBrowser,'permisos/save.php','POST',[])['status']===419,'Permisos exigen CSRF');
  verify($updatePermissions('user',$advisorId,['services.support'=>'allow','reports.internal'=>'allow'])['status']===200,'Excepción concede servicio y reporte');
@@ -204,7 +234,7 @@ try{
  $dash=http($advisor,'dashboard.php')['body'];verify(str_contains($dash,'Consultas soporte')&&!str_contains($dash,'support.only@example.com'),'Servicio adicional no amplía actividad ajena');
  $report=http($advisor,'soporte/reportes.php?usuario=test_admin&days=0')['body'];verify(str_contains($report,'advisor.only@example.com')&&!str_contains($report,'admin.secret@example.com'),'Reporte ignora suplantación del filtro usuario');
  verify($updatePermissions('user',$advisorId,['services.support'=>'allow','reports.internal'=>'allow','activity.all'=>'allow'])['status']===200,'Conceder alcance global explícito');
- $report=http($advisor,'soporte/reportes.php')['body'];verify(str_contains($report,'admin.secret@example.com')&&str_contains($report,'support.only@example.com')&&!str_contains($report,'public.secret@example.com'),'Alcance global limitado a servicios habilitados');
+ $report=http($advisor,'soporte/reportes.php')['body'];verify(!str_contains($report,'admin.secret@example.com')&&!str_contains($report,'support.only@example.com')&&str_contains($report,'advisor.only@example.com'),'Perfil operativo no puede ampliar alcance mediante activity.all');
  verify($updatePermissions('user',$advisorId,['services.advisor'=>'deny'])['status']===200,'Excepción deniega permiso heredado');
  verify(http($advisor,'soporte/asesor.php')['status']===403,'Denegación en backend');
  verify(!str_contains(http($advisor,'home.php')['body'],'id="asesorMenu"'),'Denegación en menú');
@@ -229,8 +259,11 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  verify(http($advisor,'usuario/usuario_save.php','POST',['_csrf'=>$advisorCsrf,'usuario_id'=>$adminId,'nombre'=>'Intruso','rol'=>'1','clave'=>'No permitido'])['status']===403,'Mantenimiento no permite tomar cuenta privilegiada');
  verify(http($advisor,'usuario/usuario_save.php','POST',$seed('escalation',1)+['_csrf'=>$advisorCsrf])['status']===403,'Mantenimiento no permite asignarse perfil privilegiado');
  verify($updatePermissions('user',$advisorId,['activity.own'=>'deny','reports.internal'=>'allow'])['status']===200,'Revocar visualización de actividad');
- verify(http($advisor,'soporte/reportes.php')['status']===403,'Reporte requiere alcance de actividad');
- verify(!str_contains(http($advisor,'dashboard.php')['body'],'advisor.only@example.com'),'Sin alcance no se entregan datos personales');
+ $authorizedReport=http($advisor,'soporte/reportes.php');
+ verify($authorizedReport['status']===200 && str_contains($authorizedReport['body'],'advisor.only@example.com') && !str_contains($authorizedReport['body'],'admin.secret@example.com'),'Reporte autorizado ignora denegación heredada y conserva datos propios');
+ verify(http($advisor,'dashboard.php?report=advisor')['status']===200,'Detalle autorizado no exige activity.own');
+ verify(str_contains(http($advisor,'home.php')['body'],'id="reportesMenu"'),'Menú autorizado no exige activity.own');
+ verify(!str_contains(http($advisor,'dashboard.php')['body'],'advisor.only@example.com'),'Dashboard conserva resumen sin exponer correos');
  verify($db->query('SELECT id FROM fm_permission_audit')->num_rows===$permissionWrites,'Cambios de permisos auditados');
  verify($updatePermissions('user',$advisorId,[])['status']===200,'Restaurar usuario de prueba');
  $db->query('UPDATE usuarios SET estado=0 WHERE id='.$advisorId);
@@ -246,16 +279,20 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  verify(http($adminBrowser,'oauth2callback.php?state='.urlencode($oauthQuery['state']))['status']===400,'State no se reutiliza por HTTP');
  verify(http($adminBrowser,'oauth2callback.php?state=incorrecto&code=test')['status']===400,'OAuth inválido se rechaza antes de contactar Google');
  verify(http($adminBrowser,'logout.php')['status']===405,'Logout requiere POST');
- $db->query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,streaming) VALUES('report-filter@example.test',1,NOW(),'scope_a',1),('report-filter@example.test',2,NOW(),'scope_b',2)");
+ $scopeA=$service->save($seed('scope_a',2),'test_admin',$adminId);
+ $scopeB=$service->save($seed('scope_b',2),'test_admin',$adminId);
+ $advisorFixture=$service->save($seed('advisor_fixture',2),'test_admin',$adminId);
+ $supportFixture=$service->save($seed('support_fixture',3),'test_admin',$adminId);
+ $db->query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,usuario_id,streaming) VALUES('report-filter@example.test',1,NOW(),'scope_a',$scopeA,1),('report-filter@example.test',2,NOW(),'scope_b',$scopeB,2)");
  $activityFilter=new \FMGlobal\Repositories\ActivityRepository($db);
- $db->query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,streaming) VALUES('multi-series@example.test',1,NOW(),'ADVISOR_FIXTURE',3),('multi-series@example.test',1,NOW(),'ADVISOR_FIXTURE',4),('multi-series@example.test',1,NOW(),'ADVISOR_FIXTURE',5),('multi-series@example.test',1,NOW(),'SUPPORT_FIXTURE',6)");
- $advisorSeries=$activityFilter->dailyByService([3,4,5],'ADVISOR_FIXTURE',30,'multi-series');
+ $db->query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,usuario_id,streaming) VALUES('multi-series@example.test',1,NOW(),'ADVISOR_FIXTURE',$advisorFixture,3),('multi-series@example.test',1,NOW(),'ADVISOR_FIXTURE',$advisorFixture,4),('multi-series@example.test',1,NOW(),'ADVISOR_FIXTURE',$advisorFixture,5),('multi-series@example.test',1,NOW(),'SUPPORT_FIXTURE',$supportFixture,6)");
+ $advisorSeries=$activityFilter->dailyByService([3,4,5],$advisorFixture,30,'multi-series');
  $today=date('Y-m-d');
  verify($advisorSeries[$today][3]===1 && $advisorSeries[$today][4]===1 && $advisorSeries[$today][5]===1 && $advisorSeries[$today][6]===0,'Grafico asesores separa tres tipos y excluye soporte');
- $supportSeries=$activityFilter->dailyByService([6],'SUPPORT_FIXTURE',60,'multi-series');
+ $supportSeries=$activityFilter->dailyByService([6],$supportFixture,60,'multi-series');
  verify(count($supportSeries)===60 && $supportSeries[$today][6]===1 && $supportSeries[$today][3]===0,'Grafico soporte usa una operacion y periodo seleccionado');
- verify($activityFilter->searchReport([3,4,5],'ADVISOR_FIXTURE',30,'Inicio de sesión',1,20)['total']===1,'Busqueda de asesores reconoce el tipo de consulta');
- $filteredReport=$activityFilter->searchReport([1,2],'scope_a',30,'report-filter',1,10);
+ verify($activityFilter->searchReport([3,4,5],$advisorFixture,30,'Inicio de sesión',1,20)['total']===1,'Busqueda de asesores reconoce el tipo de consulta');
+ $filteredReport=$activityFilter->searchReport([1,2],$scopeA,30,'report-filter',1,10);
  verify($filteredReport['total']===1 && $filteredReport['rows'][0]['usuario']==='scope_a','Busqueda reporte respeta alcance propio');
  verify($activityFilter->searchReport([1,2],null,30,'report-filter',1,10)['total']===2,'Busqueda reporte permite alcance global autorizado');
  verify($activityFilter->searchReport([1],null,30,'report-filter',1,10)['total']===1,'Busqueda reporte respeta operaciones autorizadas');
@@ -266,16 +303,16 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  $supportUrl='https://fmglobals.com/api/buscar_correo.php';
  $emptyClient=new \FMGlobal\Services\Http\MailApiClient(fn($url)=>['status'=>200,'body'=>json_encode(['ok'=>true,'data'=>[]])]);
  $emptySearch=new \FMGlobal\Services\Mail\SupportConsultation($emptyClient,$usageFixture);
- $emptySearch->search($supportUrl,'empty-support@example.test','support_fixture');
+ $emptySearch->search($supportUrl,'empty-support@example.test',$supportFixture);
  $saved=$db->query("SELECT usuario,num_urls,streaming FROM uso_servicio WHERE correo='empty-support@example.test'")->fetch_all(MYSQLI_ASSOC);
  verify(count($saved)===1 && $saved[0]['usuario']==='support_fixture' && (int)$saved[0]['num_urls']===0 && (int)$saved[0]['streaming']===6,'Soporte vacio registra una consulta con usuario y cero resultados');
  $successClient=new \FMGlobal\Services\Http\MailApiClient(fn($url)=>['status'=>200,'body'=>json_encode(['ok'=>true,'data'=>[['date'=>'2026-09-19 10:00:00','from'=>'fixture','subject'=>'test','body'=>'test']]])]);
- (new \FMGlobal\Services\Mail\SupportConsultation($successClient,$usageFixture))->search($supportUrl,'success-support@example.test','support_fixture');
+ (new \FMGlobal\Services\Mail\SupportConsultation($successClient,$usageFixture))->search($supportUrl,'success-support@example.test',$supportFixture);
  verify((int)$db->query("SELECT COUNT(*) AS total FROM uso_servicio WHERE correo='success-support@example.test' AND num_urls=1")->fetch_assoc()['total']===1,'Soporte exitoso se registra una sola vez');
  $failedClient=new \FMGlobal\Services\Http\MailApiClient(fn($url)=>['status'=>503,'body'=>'']);
- try {(new \FMGlobal\Services\Mail\SupportConsultation($failedClient,$usageFixture))->search($supportUrl,'failed-support@example.test','support_fixture'); throw new RuntimeException('Error esperado');} catch(\FMGlobal\Http\HttpException $e){verify($e->status===502,'Error externo no se convierte en consulta vacia');}
+ try {(new \FMGlobal\Services\Mail\SupportConsultation($failedClient,$usageFixture))->search($supportUrl,'failed-support@example.test',$supportFixture); throw new RuntimeException('Error esperado');} catch(\FMGlobal\Http\HttpException $e){verify($e->status===502,'Error externo no se convierte en consulta vacia');}
  verify((int)$db->query("SELECT COUNT(*) AS total FROM uso_servicio WHERE correo='failed-support@example.test'")->fetch_assoc()['total']===0,'Error externo no registra exito ficticio');
- verify(!str_contains(http($adminBrowser,'home.php')['body'],'id="reporteLinks"'),'Menu sin reporte de links');
+ verify(str_contains(http($adminBrowser,'home.php')['body'],'id="reporteLinks"'),'Menu incluye Consultas link para administrador');
  $supportOriginal=$permissionRepo->settings('user',$supportId);
  $supportValues=array_fill_keys(array_keys(\FMGlobal\Security\PermissionCatalog::ITEMS),'inherit');
  foreach($supportOriginal as $code=>$value)$supportValues[$code]=$value?'allow':'deny';
@@ -296,6 +333,13 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  $db->execute_query('UPDATE usuarios SET usuario=? WHERE id=?',['test_admin',$adminId]);
  verify(http($adminBrowser,'logout.php','POST',['_csrf'=>$csrf])['status']===302,'Logout con CSRF');
  verify(http($adminBrowser,'usuario/usuarios.php')['status']===401,'Logout elimina sesión');
+ $migrationCounts=$db->query('SELECT COUNT(*) n FROM uso_servicio')->fetch_assoc();
+ foreach ([['--check'],['--apply','--allow-deployment'],['--apply','--allow-deployment']] as $flags) {
+   $process=proc_open(array_merge([PHP_BINARY,FM_ROOT.'/bin/migrate-all.php'],$flags),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$migrationPipes,FM_ROOT,$env);
+   fclose($migrationPipes[0]);$output=stream_get_contents($migrationPipes[1]);fclose($migrationPipes[1]);$error=stream_get_contents($migrationPipes[2]);fclose($migrationPipes[2]);
+   verify(proc_close($process)===0,'Ejecutor de migraciones '.implode(' ',$flags).': '.$error);
+ }
+ verify($db->query('SELECT COUNT(*) n FROM uso_servicio')->fetch_assoc()===$migrationCounts,'Ejecutor repetido conserva todos los históricos');
  echo "$count comprobaciones funcionales correctas en base temporal, sin consultas externas.\n";
 }finally{
  foreach($clients as $client)curl_close($client);

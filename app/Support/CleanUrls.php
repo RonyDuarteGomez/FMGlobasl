@@ -7,7 +7,7 @@ final class CleanUrls
         'Autoriza'=>'autorizar-gmail', 'asesorMenu'=>'asesor', 'soporteMenu'=>'soporte',
         'menuUsuarios'=>'usuarios', 'menuPermisos'=>'permisos',
         'reportePublico'=>'reportes/clientes', 'reportesMenu'=>'reportes/asesores',
-        'reporteSoporte'=>'reportes/soporte',
+        'reporteSoporte'=>'reportes/soporte', 'reporteLinks'=>'reportes/links',
     ];
     public static function base(): string
     {

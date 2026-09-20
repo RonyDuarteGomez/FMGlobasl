@@ -9,7 +9,7 @@ SELECT
   us.num_urls AS n_codigos,
   CASE WHEN streaming = \'1\' THEN \'Netflix\' ELSE \'Disney\'END AS usuario
 FROM uso_servicio us
-LEFT JOIN usuarios usu ON us.usuario = usu.usuario
+LEFT JOIN usuarios usu ON us.usuario_id = usu.id
 LEFT JOIN personal pe ON usu.id = pe.usuario_id
 where streaming in (\'1\',\'2\')
 ORDER BY us.fecha DESC;
@@ -42,7 +42,7 @@ SELECT
     ELSE \'N/D\'
   END AS servicio
 FROM uso_servicio us
-LEFT JOIN usuarios usu ON us.usuario = usu.usuario
+LEFT JOIN usuarios usu ON us.usuario_id = usu.id
 LEFT JOIN personal pe ON usu.id = pe.usuario_id
 WHERE us.streaming IN (\'3\',\'4\',\'5\',\'6\')
 ORDER BY us.fecha DESC

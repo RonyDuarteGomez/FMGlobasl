@@ -1,5 +1,9 @@
 # Menú, permisos y dashboard personalizado
 
+> Las nuevas relaciones solicitadas entre servicios, reportes y tarjetas se documentan
+> en [ACCESS_RULES.md](ACCESS_RULES.md). Esa especificación distingue reglas confirmadas,
+> decisiones pendientes y diferencias con la implementación actual.
+
 ## Uso
 
 Todos los usuarios entran en Inicio. El menú agrupa **Servicios**, **Reportes** y **Mantenimiento**; solo muestra opciones autorizadas y oculta grupos vacíos.
@@ -13,12 +17,11 @@ En **Mantenimiento → Permisos**:
 
 Una excepción individual prevalece sobre el perfil, incluso cuando deniega un acceso normalmente permitido. Elegir Heredar elimina la excepción. Guardar recarga el panel para actualizar el menú del gestor; las demás sesiones aplican los cambios en su siguiente solicitud. Si conservan una opción antigua visible, el servidor rechaza su uso y una recarga actualiza el menú.
 
-Los permisos de información tienen un alcance separado:
-
-- **Ver actividad propia:** historial del usuario conectado.
-- **Ver actividad de todos:** historial global, únicamente de sus servicios autorizados. Prevalece sobre el alcance propio si ambos están permitidos.
-- Sin ninguno, puede abrir sus servicios pero no recibe estadísticas ni detalle histórico.
-- Un permiso de reportes no concede acceso a otro servicio. El reporte interno cruza ese permiso con Asesor/Soporte; el reporte público habilita el conjunto de consultas públicas.
+El alcance depende del perfil validado en servidor: el administrador ve los datos
+globales y los demás usuarios solo su actividad. Los permisos heredados de información
+no afectan el acceso; se conservan únicamente por compatibilidad. Las tarjetas se
+muestran por módulo o reporte, y el detalle requiere el permiso del reporte, según
+[ACCESS_RULES.md](ACCESS_RULES.md).
 
 Los permisos de Usuarios, Gmail y Horarios permiten administrar esos recursos compartidos y, por ello, ver sus respectivos contadores actuales.
 

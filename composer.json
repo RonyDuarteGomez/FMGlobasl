@@ -19,6 +19,7 @@
             "@php tests/structure.php",
             "@php tests/backend.php"
         ],
-        "test:integration": "@php tests/backend-integration.php"
+        "test:integration": "@php tests/backend-integration.php",
+        "test:links": "@php tests/link-accounts.php"
     }
 }

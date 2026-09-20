@@ -5,7 +5,7 @@ use FMGlobal\Repositories\UsageRepository;
 final class SupportConsultation
 {
     public function __construct(private MailApiClient $client, private UsageRepository $usage) {}
-    public function search(string $url,string $email,string $user): array
+    public function search(string $url,string $email,int $user): array
     {
         $data=$this->client->get($url);
         // Una consulta valida cuenta incluso si el buzon no devuelve correos.

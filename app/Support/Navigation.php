@@ -18,8 +18,9 @@ final class Navigation
         ],
         'Reportes'=>[
             ['reportePublico','Consultas clientes','inicio.php','reports.public',''],
-            ['reportesMenu','Consultas asesores','dashboard.php?report=advisor','services.advisor',''],
+            ['reportesMenu','Consultas asesores','dashboard.php?report=advisor','reports.internal',''],
             ['reporteSoporte','Consultas soporte','dashboard.php?report=support','reports.support',''],
+            ['reporteLinks','Consultas link','dashboard.php?report=links','reports.links',''],
         ],
     ];
     public static function label(string $id): string
@@ -31,7 +32,7 @@ final class Navigation
     {
         $groups=[];
         foreach(self::GROUPS as $title=>$items) {
-            foreach($items as $item) if (!empty($permissions[$item[3]]) && ($title!=='Reportes' || \FMGlobal\Security\ActivityScope::visible($permissions))) $groups[$title][]=$item;
+            foreach($items as $item) if (!empty($permissions[$item[3]])) $groups[$title][]=$item;
         }
         return $groups;
     }

@@ -11,6 +11,7 @@ final class PermissionCatalog
         'reports.public'=>['Reportes','Consultas clientes'],
         'reports.internal'=>['Reportes','Consultas asesores'],
         'reports.support'=>['Reportes','Consultas soporte'],
+        'reports.links'=>['Reportes','Consultas link'],
         'users.manage'=>['Mantenimiento','Usuarios'],
         'permissions.manage'=>['Mantenimiento','Permisos'],
         'activity.own'=>['Información','Ver actividad propia'],

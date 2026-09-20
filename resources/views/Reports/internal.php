@@ -59,7 +59,7 @@
                 <td><?= htmlspecialchars(\FMGlobal\Support\DisplayDate::dateTime($row['fecha_consulta'])) ?></td>
                 <td><?= htmlspecialchars($row['correo_consultado']) ?></td>
                 <td><?= htmlspecialchars($row['n_codigos']) ?></td>
-                <td><?= htmlspecialchars($row['usuario']) ?></td>
+                <td><?= htmlspecialchars($row['display_name']??$row['usuario']) ?></td>
                 <td><?= htmlspecialchars($row['servicio']) ?></td>
               </tr>
               <?php $num++; ?>

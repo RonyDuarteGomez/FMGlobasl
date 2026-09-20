@@ -233,7 +233,7 @@ if (
             }
 
             $usuario_sesion =
-                $_SESSION['usuario'] ?? null;
+                isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : null;
 
             (new \FMGlobal\Repositories\UsageRepository($conexion))->register($correo, $num_urls, $usuario_sesion, $tipo);
         }

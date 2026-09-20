@@ -51,7 +51,7 @@ $url =
 $data = (new \FMGlobal\Services\Mail\SupportConsultation(
     new \FMGlobal\Services\Http\MailApiClient(),
     new \FMGlobal\Repositories\UsageRepository($conexion)
-))->search($url,$correo,$_SESSION['usuario']);
+))->search($url,$correo,(int)$_SESSION['usuario_id']);
 
 if (
     !$data

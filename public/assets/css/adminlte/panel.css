@@ -35,3 +35,9 @@
   .user-name { max-width: 170px; }
 }
 @media (prefers-reduced-motion: reduce) { .fm-panel .app-sidebar { transition: none; } }
+/* El acordeón usa .active/.collapsed; evita el desplazamiento adicional de AdminLTE. */
+.fm-panel .app-sidebar, .fm-panel.sidebar-collapse .app-sidebar { margin-left:0; margin-right:0; }
+@media(max-width:768px) {
+ .fm-panel .app-sidebar { grid-area:auto; width:240px; max-width:240px; transform:none; }
+ .fm-panel .app-sidebar.active { left:0; margin-left:0; }
+}

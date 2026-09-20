@@ -219,3 +219,101 @@
 .session-warning { position:fixed; bottom:16px; right:16px; left:16px; margin:0 auto; max-width:680px; z-index:2200; display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .session-warning[hidden] { display:none; }
 @media(max-width:600px) { .session-warning { flex-wrap:wrap; } }
+
+/* Cuentas Link Netflix: componentes compartidos con Gmail y Usuarios. */
+.link-toolbar { justify-content:flex-start; display:flex; flex-wrap:wrap; gap:10px; }
+.links-page .link-filters { display:flex; flex-wrap:wrap; gap:10px; }
+.links-page .link-filters input { flex:1 1 230px; }
+.links-page .link-filters select { flex:0 1 180px; width:auto; }
+.link-actions { flex-wrap:wrap; gap:8px; }
+.link-actions .btn { font-size:.75rem; padding:3px 9px; white-space:nowrap; }
+.link-credentials { overflow-wrap:anywhere; min-width:180px; max-width:360px; }
+.link-import-errors { max-height:220px; overflow:auto; font-size:.8125rem; padding-left:20px; }
+.link-account-totals { display:flex; flex-wrap:wrap; gap:18px; margin:12px 0; }
+.link-account-totals strong { display:block; font-size:1.4rem; }
+.link-account-users { max-height:240px; overflow:auto; }
+
+/* Dashboard: dos tarjetas por fila; los permisos solo determinan cuáles aparecen. */
+.dashboard-overview > .dashboard-card { min-width:0; }
+.dashboard-mix-card .platform-donut { width:135px; height:135px; flex-basis:135px; }
+.dashboard-activity-card .daily-activity { margin:12px 0; }
+.account-chart { display:flex; align-items:center; gap:18px; padding:10px 0; }
+.account-chart + .account-chart { border-top:1px solid var(--bs-border-color); }
+.account-chart .platform-donut { width:125px; height:125px; flex:0 0 125px; }
+.account-chart-summary { flex:1; min-width:0; }
+.account-chart-summary h4 { font-size:.875rem; font-weight:600; margin:0 0 10px; }
+.account-state { --account-first:var(--bs-success); --account-second:var(--bs-danger); }
+.account-assignment { --account-first:var(--color-primario); --account-second:var(--bs-secondary); }
+.account-donut-primary { stroke:var(--account-first); }
+.account-donut-secondary { stroke:var(--account-second); }
+.account-legend-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:.8125rem; margin:6px 0; }
+.account-legend-row strong { margin-left:auto; white-space:nowrap; }
+.account-legend-row small { font-weight:400; color:var(--bs-secondary-color); }
+.account-dot { width:8px; height:8px; border-radius:50%; flex:0 0 8px; }
+.account-dot-primary { background:var(--account-first); }
+.account-dot-secondary { background:var(--account-second); }
+.account-user-legend { list-style:none; padding:0 0 0 14px; margin:8px 0 12px; max-height:160px; overflow-y:auto; }
+.account-user-legend li { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:7px 0; font-size:.75rem; }
+.account-user-name { overflow-wrap:anywhere; }
+.account-user-legend li strong { margin-left:auto; }
+.account-user-legend .badge { font-size:.65rem; }
+@media(max-width:420px) { .account-chart { gap:10px; }.account-chart .platform-donut { width:95px; height:95px; flex-basis:95px; } }
+
+/* Inventario: aro a la izquierda, leyenda a la derecha. */
+.account-charts-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.account-charts-row .account-chart { flex-direction:row; align-items:center; gap:10px; min-width:0; }
+.account-charts-row .account-chart + .account-chart { border-top:0; border-left:1px solid var(--bs-border-color); padding-left:12px; }
+.account-charts-row .account-chart-summary { flex:1; min-width:0; }
+.account-charts-row .platform-donut { width:110px; height:110px; flex-basis:110px; }
+.account-charts-row .account-user-legend { padding-left:0; }
+.account-charts-row .account-legend-row strong,.account-charts-row .account-user-legend strong { margin-left:0; }
+.account-charts-row small { font-weight:400; color:var(--bs-secondary-color); }
+.personal-dashboard .dashboard-overview { align-items:stretch; }
+.dashboard-overview > .dashboard-card { display:flex; flex-direction:column; }
+.dashboard-overview > .dashboard-card > .dashboard-link { margin-top:auto; }
+.dashboard-overview .dashboard-activity-card .daily-activity { width:100%; box-sizing:border-box; margin:12px 0; }
+@media(max-width:1100px) and (min-width:601px), (max-width:480px) {
+ .account-charts-row { grid-template-columns:1fr; }
+ .account-charts-row .account-chart + .account-chart { border-left:0; border-top:1px solid var(--bs-border-color); padding-left:0; }
+}
+
+.account-user-legend .account-no-access,.account-user-legend .account-no-access small { color:var(--bs-danger); font-weight:700; }
+.personal-dashboard .dashboard-totals { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.dashboard-totals .account-access-notices { display:flex; flex-wrap:wrap; gap:8px 16px; font-size:.8125rem; }
+
+.account-assignment .account-user-legend { margin:0; }
+.account-assignment .account-user-legend li { margin:6px 0; }
+.account-assignment .account-user-legend li:last-child { margin-bottom:0; }
+.dashboard-totals .account-access-notices { align-items:center; gap:6px; }
+.dashboard-totals .account-access-notices svg { flex-shrink:0; }
+
+#linkTable { table-layout:fixed; min-width:950px; }
+#linkTable th:nth-child(1) { width:5%; }
+#linkTable th:nth-child(2) { width:25%; }
+#linkTable th:nth-child(3) { width:8%; }
+#linkTable th:nth-child(4) { width:15%; }
+#linkTable th:nth-child(5) { width:17%; }
+#linkTable th:nth-child(6) { width:30%; }
+#linkTable th,#linkTable td { padding:8px 10px; text-align:left; overflow-wrap:anywhere; }
+#linkTable .gmail-token { display:inline-block; width:64px; text-align:center; }
+#linkTable .link-actions { justify-content:flex-start; gap:6px; }
+.link-warning-icon { flex-shrink:0; vertical-align:middle; margin-right:6px; }
+
+/* Cabecera compacta y gráficos centrados en el espacio disponible de cada tarjeta. */
+.dashboard-card-heading { display:flex; align-items:center; justify-content:space-between; gap:8px 12px; margin-bottom:8px; }
+.dashboard-card .dashboard-card-heading h3 { margin:0; min-width:0; }
+.dashboard-card-heading .metric-period { margin:0 0 0 auto; white-space:nowrap; flex-shrink:0; }
+.dashboard-overview .dashboard-mix-card > .platform-mix { flex:1; align-items:center; }
+.dashboard-overview .account-dashboard-card > .account-charts-row { flex:1; align-content:center; align-items:center; }
+@media(max-width:420px) { .dashboard-card-heading { flex-wrap:wrap; } }
+
+/* Nombre navegable y estado compacto, con iconos alineados al centro. */
+.personal-dashboard .dashboard-totals .activation-status { gap:6px; }
+.dashboard-status-link { display:inline-flex; align-items:center; padding:0; border:0; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.dashboard-status-link:hover { text-decoration:none; }
+.dashboard-status-link:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+.dashboard-totals .activation-indicator { display:inline-flex; align-items:center; gap:0; white-space:nowrap; font-size:1rem; line-height:1.2; }
+.dashboard-totals .activation-indicator strong { margin-left:.25em; }
+.dashboard-totals .activation-indicator.needs-attention { color:inherit; }
+.dashboard-totals .activation-indicator .activation-dot { display:inline-block; vertical-align:middle; }
+.dashboard-totals .activation-indicator .link-warning-icon { width:14px; height:14px; margin:0; flex-shrink:0; }

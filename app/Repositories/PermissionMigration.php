@@ -35,6 +35,12 @@ final class PermissionMigration
                 $db->query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) SELECT user_id,'reports.support',allowed FROM fm_user_permissions WHERE permission_code='services.support' ON DUPLICATE KEY UPDATE allowed=VALUES(allowed)");
                 $db->query("INSERT INTO fm_migrations(name,applied_at) VALUES('002_support_report',NOW())");
             }
+            if (!$db->query("SELECT name FROM fm_migrations WHERE name='003_link_report'")->num_rows) {
+                $db->query("INSERT IGNORE INTO fm_permissions(code,section_name,label) VALUES('reports.links','Reportes','Consultas link')");
+                $db->query("INSERT IGNORE INTO fm_role_permissions(role_id,permission_code,allowed) VALUES(1,'reports.links',1)");
+                $db->query("INSERT INTO fm_migrations(name,applied_at) VALUES('003_link_report',NOW())");
+                $db->query('UPDATE fm_permission_lock SET revision=revision+1 WHERE id=1');
+            }
             $db->commit();
         } catch (\Throwable $e) { $db->rollback(); throw $e; }
     }

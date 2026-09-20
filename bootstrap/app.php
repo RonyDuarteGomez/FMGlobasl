@@ -38,7 +38,7 @@ function fm_dispatch(string $route): void
 {
     ini_set('display_errors', '0');
     $routes = require FM_ROOT.'/routes/web.php';
-    $json = str_starts_with($route,'api/') || in_array($route,['session.php','usuario/usuario_get.php','permisos/save.php','activacion/actualizar_activacion.php'],true);
+    $json = ($route==='soporte/link.php' && (($_SERVER['REQUEST_METHOD']??'GET')==='POST' || isset($_GET['action']))) || str_starts_with($route,'api/') || in_array($route,['session.php','usuario/usuario_get.php','permisos/save.php','activacion/actualizar_activacion.php'],true);
     $level = ob_get_level(); ob_start();
     try {
         if (!isset($routes[$route])) throw new \FMGlobal\Http\HttpException(404,'Página no encontrada.');

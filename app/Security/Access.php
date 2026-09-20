@@ -4,6 +4,7 @@ use FMGlobal\Http\HttpException;
 final class Access
 {
     private static array $permissions=[];
+    public static function isAdmin(): bool { return (int)($_SESSION['rol_id']??0)===1; }
     public static function can(string $permission): bool { return self::$permissions[$permission]??false; }
     public static function permissions(): array { return self::$permissions; }
     public static function check(string $route): void
@@ -20,6 +21,5 @@ final class Access
         self::$permissions=(new \FMGlobal\Repositories\PermissionRepository(database()))->effective((int)$user['id']);
         $permission=PermissionCatalog::route($route);
         if ($permission!==null && !self::can($permission)) throw new HttpException(403,'No tienes permiso para esta operación.');
-        if (str_starts_with($permission??'','reports.') && !self::can('activity.own') && !self::can('activity.all')) throw new HttpException(403,'No tienes permiso para consultar actividad.');
     }
 }

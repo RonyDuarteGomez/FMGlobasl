@@ -9,7 +9,7 @@ $allowed=ActivityScope::operations($permissions);
 if (!empty($permissions['services.links'])) $allowed[]=7;
 $requested=match($reportKind){'public'=>[1,2],'advisor'=>[3,4,5],'support'=>[6],'links'=>[7],default=>[3,4,5,6,7]};
 $operations=array_values(array_intersect($allowed,$requested));
-$user=ActivityScope::user($permissions,$_SESSION['usuario']);
+$user=ActivityScope::user($permissions,(int)$_SESSION['usuario_id'],Access::isAdmin());
 $activity=new \FMGlobal\Repositories\ActivityRepository(database());
 if (in_array($reportKind,['public','advisor','support'],true)) {
     $route=$reportKind==='public'?'inicio.php':'dashboard.php';

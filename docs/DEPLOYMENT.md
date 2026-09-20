@@ -1,3 +1,5 @@
+> Procedimiento vigente de cambios de base: [DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md). Ejecutar las migraciones del release antes de abrir el tráfico.
+
 # Despliegue de la estructura modular
 
 ## Antes de publicar
@@ -9,7 +11,7 @@
    parte de esta migración.
 4. Incorporar config/private.php y config/credentials.json existentes por un canal
    privado. No reemplazar sus valores por los ejemplos del repositorio.
-5. Mantener la base existente y todas sus tablas; esta reforma no necesita DDL.
+5. Mantener la base existente y aplicar `bin/migrate-all.php` según DATABASE_MIGRATIONS.md; este release incluye cambios de estructura y datos.
 6. Configurar el DocumentRoot en la carpeta public/ del release nuevo.
 7. Verificar login, roles, mantenimiento Gmail, callbacks, consultas, enlaces,
    resultados e historial antes de cambiar el tráfico de producción.
@@ -65,7 +67,7 @@ navegador. Las comprobaciones HTTP no sustituyen esa revisión.
 ## Reversión
 
 Volver a apuntar el servidor al release anterior (base 7cfa2de) y conservar sus
-archivos privados. No hay una migración de base de datos que revertir. No restaurar
+archivos privados. Este release sí incluye migraciones: seguir el procedimiento de reversión de DATABASE_MIGRATIONS.md antes de volver a una versión anterior. No restaurar
 copias antiguas de tokens para revertir únicamente los archivos de aplicación.
 ## Validación posterior a importar la base local
 
@@ -138,7 +140,7 @@ Autorizar y Actualizar token abren otra pestaña. La renovación envía login_hi
 
 ### Permiso Consultas soporte
 
-Ejecutar `php bin/migrate-permissions.php --allow-deployment` antes de publicar. La migración 002_support_report crea reports.support y copia una sola vez los accesos y excepciones de services.support para conservar la distribución existente. A partir de ahí el acceso al reporte se configura por separado; el menú y la ruta del reporte comprueban este permiso. No se añade un permiso de reporte de Links.
+Ejecutar `php bin/migrate-permissions.php --allow-deployment` antes de publicar. La migración 002_support_report crea reports.support y copia una sola vez los accesos y excepciones de services.support para conservar la distribución existente. A partir de ahí el acceso al reporte se configura por separado; el menú y la ruta del reporte comprueban este permiso. La migración posterior 003 incorpora el permiso independiente reports.links.
 
 ### Seguridad del login empresarial
 
@@ -161,3 +163,21 @@ Los endpoints PHP anteriores y el callback OAuth siguen disponibles. La navegaci
 actualiza el historial del navegador y restaura el módulo al recargar; los filtros
 locales de tablas no se conservan al recargar. Los permisos se comprueban en los
 endpoints originales; una URL limpia no concede acceso adicional.
+
+## Gestión de cuentas Link Netflix
+
+Antes de publicar el código, respaldar la base y ejecutar `php bin/migrate-links.php --allow-deployment`
+en el servidor destino. En local basta `php bin/migrate-links.php`. La migración es aditiva
+(idempotente): crea cuentas y auditoría sin modificar los registros anteriores.
+
+Respaldar **config/links.key** de forma privada junto con la base. Si se trasladan cuentas
+cifradas a otro servidor, instalar la misma clave; una clave diferente no puede leerlas.
+El archivo no se sube a Git y la migración no crea una clave nueva si ya existen cuentas.
+Restringir su lectura al usuario PHP y al operador de respaldo. PHP requiere OpenSSL y cURL.
+La API de generación conserva su URL; ahora necesita salida HTTPS desde el servidor PHP.
+Para admitir archivos de 5 MB, configurar `upload_max_filesize` al menos 5M y
+`post_max_size` mayor (por ejemplo 8M). No se efectuaron consultas reales a la API durante pruebas.
+
+Si ya se cargaron cuentas con `correo/contraseña`, ejecutar `php bin/migrate-link-credentials.php --allow-deployment` con la clave original para convertirlas a `correo:contraseña`. La migración conserva la contraseña completa y actualiza el control de duplicados.
+
+Para habilitar Consultas link, ejecutar `php bin/migrate-permissions.php --allow-deployment`. Añade `reports.links` y lo habilita inicialmente para el perfil administrador; se puede conceder a otros perfiles o usuarios. El reporte incluye intentos registrados en `fm_link_audit` desde la incorporación del módulo de cuentas. El historial anterior de `uso_servicio` se conserva, pero no contiene cuenta ni intentos fallidos y no se mezcla con este reporte.

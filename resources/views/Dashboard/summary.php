@@ -1,19 +1,19 @@
 <?php $escape=fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8'); ?>
 <section class="personal-dashboard">
-<?php if($dashboard['showActivation']): ?>
+<?php if($dashboard['showActivation'] || (!empty($dashboard['global']) && !empty($linkAccounts['orphaned']))): ?>
 <div class="dashboard-totals">
-<div class="activation-status"><span>Soporte de clientes</span>
-<span class="activation-indicator"><span class="activation-dot <?= $dashboard['activation']===null?'unknown':($dashboard['activation']?'active':'inactive') ?>" aria-hidden="true"></span><strong><?= $dashboard['activation']===null?'Sin horario configurado':($dashboard['activation']?'Activo':'Inactivo') ?></strong></span>
-</div>
+<?php if($dashboard['showActivation']): ?>
+<div class="activation-status"><button type="button" class="dashboard-status-link" data-open-module="Activacion"><span>Soporte de clientes</span></button><span class="activation-indicator">[<span class="activation-dot <?= $dashboard['activation']===null?'unknown':($dashboard['activation']?'active':'inactive') ?>" aria-hidden="true"></span> <strong><?= $dashboard['activation']===null?'Sin horario configurado':($dashboard['activation']?'Activo':'Inactivo') ?></strong>]</span>
 </div>
 <?php endif ?>
-<?php foreach([true,false] as $primary):
-$cards=array_filter($dashboard['cards'],fn($card)=>$card['primary']===$primary);
-if(!$cards) continue;
-?>
-<div class="dashboard-grid <?= count($cards)===1?'dashboard-single ':'' ?><?= $primary?'dashboard-primary':'dashboard-secondary' ?>">
-<?php foreach($cards as $card): ?>
-<article class="dashboard-card card card-outline card-primary"><h3><?= $escape($card['title']) ?></h3>
+<?php if(!empty($dashboard['global']) && !empty($linkAccounts['orphaned'])): ?><div class="activation-status"><button type="button" class="dashboard-status-link" data-open-module="Link" title="Hay cuentas Link Netflix asignadas a usuarios sin acceso o inactivos."><span>Link Netflix</span></button><span class="activation-indicator needs-attention" title="Cuentas asignadas a usuarios sin acceso o inactivos. Revisa sus asignaciones en Link Netflix.">[<svg class="link-warning-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="var(--bs-warning)" d="M12 2 1 22h22L12 2Z"/><path stroke="#212529" stroke-width="2" d="M12 8v7m0 2v2"/></svg> <strong>Requiere atención</strong>]</span></div><?php endif ?>
+</div>
+<?php endif ?>
+<div class="dashboard-grid dashboard-overview">
+<?php if(!empty($linkAccounts)) require FM_ROOT.'/resources/views/Dashboard/link-accounts.php'; ?>
+<?php if(!empty($linkConsultations)) require FM_ROOT.'/resources/views/Dashboard/link-consultations.php'; ?>
+<?php foreach($dashboard['cards'] as $card): ?>
+<article class="dashboard-card <?= isset($card['mix'])?'dashboard-mix-card':'dashboard-activity-card' ?> card card-outline card-primary"><div class="dashboard-card-heading"><h3><?= $escape($card['title']) ?></h3><?php if($card['visible']): ?><span class="metric-period">Últimos 30 días</span><?php endif ?></div>
 <?php if($card['visible']): ?>
 <?php if(isset($card['mix'])):
 $total=$card['mix']['netflix']+$card['mix']['disney'];
@@ -34,15 +34,14 @@ $disney=$total?round(100-$netflix,1):0;
 <li><span class="platform-dot disney"></span><span>Disney<strong><?= $disney ?>% <small>(<?= $card['mix']['disney'] ?>)</small></strong></span></li>
 </ul>
 </div>
-<p class="metric-period"><?= $total?'Últimos 30 días':'Sin consultas en los últimos 30 días' ?></p>
+
 <?php else: ?>
 <div class="secondary-metrics"><div class="card-metric"><?= (int)$card['summary']['total'] ?><span><?= $card['links']?'links generados':'consultas' ?></span></div>
-<p class="metric-period">Últimos 30 días</p></div><figure class="daily-activity <?= $card['links']?'links-activity':'support-activity' ?>"><figcaption>Actividad diaria</figcaption><?= \FMGlobal\Support\DailyBars::render($card['series']) ?></figure>
+</div><figure class="daily-activity <?= $card['links']?'links-activity':'support-activity' ?>"><figcaption>Actividad diaria</figcaption><?= \FMGlobal\Support\DailyBars::render($card['series']) ?></figure>
 <?php endif ?>
 <?php else: ?><p>Sin permiso para visualizar actividad.</p><?php endif ?>
 <?php if($card['visible'] && $card['canReport']): ?><button type="button" class="dashboard-link" data-load-url="<?= $escape($card['reportUrl']) ?>"><?= $escape($card['action']) ?> <span aria-hidden="true">→</span></button><?php endif ?>
 </article><?php endforeach ?>
 </div>
-<?php endforeach ?>
-<?php if(!$dashboard['cards']): ?><div class="card card-body"><p class="mb-0">No tienes consultas habilitadas en este dashboard.</p></div><?php endif ?>
+<?php if(!$dashboard['cards'] && empty($linkAccounts) && empty($linkConsultations)): ?><div class="card card-body"><p class="mb-0">No tienes consultas habilitadas en este dashboard.</p></div><?php endif ?>
 </section>
