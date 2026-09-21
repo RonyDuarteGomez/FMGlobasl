@@ -35,6 +35,7 @@ try{
  $db->query("INSERT INTO rol(rol_id,rol_nombre) VALUES(1,'Administrador'),(2,'Asesor'),(3,'Soporte')");
  \FMGlobal\Repositories\PermissionMigration::apply($db);
  \FMGlobal\Repositories\LinkAccountMigration::apply($db);
+ \FMGlobal\Repositories\SpotifyMigration::apply($db);
  \FMGlobal\Repositories\GmailMigration::apply($db);
  \FMGlobal\Repositories\GmailMigration::apply($db);
  $gmail=new \FMGlobal\Repositories\GmailTokenRepository($db);
@@ -333,6 +334,29 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  $db->execute_query('UPDATE usuarios SET usuario=? WHERE id=?',['test_admin',$adminId]);
  verify(http($adminBrowser,'logout.php','POST',['_csrf'=>$csrf])['status']===302,'Logout con CSRF');
  verify(http($adminBrowser,'usuario/usuarios.php')['status']===401,'Logout elimina sesión');
+ // Spotify: ruta real, permiso independiente, CSRF y minimización de datos.
+ $db->execute_query('UPDATE usuarios SET estado=1 WHERE id=?',[$advisorId]);$advisorCsrf=login($advisor,'test_asesor');$csrf=login($adminBrowser,'test_admin');
+ verify(http($probe,'gestion/spotify.php?action=metadata')['status']===401,'Spotify exige sesión');
+ verify(http($advisor,'gestion/spotify.php')['status']===403,'Spotify inicialmente denegado al asesor');
+ verify(http($adminBrowser,'gestion/spotify.php')['status']===200,'Administrador abre Spotify');
+ verify(str_contains(http($adminBrowser,'home.php')['body'],'id="Spotify"'),'Spotify integrado en menú');
+ verify(http($adminBrowser,'gestion/spotify.php','POST',['action'=>'obtain','payload'=>'{}'])['status']===419,'Spotify exige CSRF en mutaciones');
+ $db->execute_query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,'services.spotify',1) ON DUPLICATE KEY UPDATE allowed=1",[$advisorId]);
+ verify(http($advisor,'gestion/spotify.php')['status']===200,'Excepción de usuario habilita Spotify');
+ $spMeta=json_decode(http($adminBrowser,'gestion/spotify.php?action=metadata')['body'],true);$spService=(int)$spMeta['services'][0]['id'];
+ $spPayload=['request_key'=>bin2hex(random_bytes(16)),'service_id'=>$spService,'email'=>'main-sp@example.test','payment_email'=>'payment-sp@example.test','next_payment'=>date('Y-m-d',strtotime('+10 days')),'accounts'=>[['email'=>'child-sp@example.test','password'=>'synthetic-sp-secret','profiles'=>[['name'=>'']]]]];
+ $spSave=http($adminBrowser,'gestion/spotify.php','POST',['_csrf'=>$csrf,'action'=>'save','payload'=>json_encode($spPayload)]);
+ verify($spSave['status']===200,'Alta Spotify por HTTP');
+ $spMain=json_decode($spSave['body'],true)['id'];
+ verify(http($advisor,'gestion/spotify.php?action=main&id='.$spMain)['status']===403,'Datos principal solo administrador');
+ $spList=json_decode(http($advisor,'gestion/spotify.php?action=list')['body'],true);verify($spList['total']===0&&!str_contains(json_encode($spList),'child-sp'),'Operativo no recibe inventario libre');
+ $spObtain=['request_key'=>bin2hex(random_bytes(16)),'service_id'=>$spService,'phone'=>'+51999123456','client_name'=>'Cliente HTTP','start_date'=>date('Y-m-d')];
+ $spAssigned=http($advisor,'gestion/spotify.php','POST',['_csrf'=>$advisorCsrf,'action'=>'obtain','payload'=>json_encode($spObtain)]);verify($spAssigned['status']===200&&json_decode($spAssigned['body'],true)['available'],'Asesor obtiene cuenta por HTTP');
+ $spList=http($advisor,'gestion/spotify.php?action=list');$spRows=json_decode($spList['body'],true)['rows'];
+ verify(count($spRows)===1&&$spRows[0]['profile']==='Perfil 1'&&$spRows[0]['password']==='synthetic-sp-secret','Operativo recibe sus credenciales');
+ verify(!str_contains($spList['body'],'main-sp@')&&!str_contains($spList['body'],'payment-sp@')&&!str_contains($spList['body'],'next_payment'),'HTTP no expone proveedor al operativo');
+ $db->execute_query("UPDATE fm_user_permissions SET allowed=0 WHERE user_id=? AND permission_code='services.spotify'",[$advisorId]);
+ verify(http($advisor,'gestion/spotify.php?action=list')['status']===403,'Revocación Spotify bloquea sesión existente');
  $migrationCounts=$db->query('SELECT COUNT(*) n FROM uso_servicio')->fetch_assoc();
  foreach ([['--check'],['--apply','--allow-deployment'],['--apply','--allow-deployment']] as $flags) {
    $process=proc_open(array_merge([PHP_BINARY,FM_ROOT.'/bin/migrate-all.php'],$flags),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$migrationPipes,FM_ROOT,$env);

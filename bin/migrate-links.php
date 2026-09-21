@@ -7,7 +7,8 @@ $db=database();
 \FMGlobal\Repositories\LinkAccountMigration::apply($db);
 $keyPath=FM_ROOT.'/config/links.key';
 if(!is_file($keyPath)) {
- if((int)$db->query('SELECT COUNT(*) n FROM fm_link_accounts')->fetch_assoc()['n']>0) throw new RuntimeException('Restaura la clave original: hay cuentas cifradas.');
+ $hasSpotify=$db->query("SHOW TABLES LIKE 'fm_service_accounts'")->num_rows>0 && (int)$db->query('SELECT COUNT(*) n FROM fm_service_accounts')->fetch_assoc()['n']>0;
+ if($hasSpotify||(int)$db->query('SELECT COUNT(*) n FROM fm_link_accounts')->fetch_assoc()['n']>0) throw new RuntimeException('Restaura la clave original: hay cuentas cifradas de Link o Spotify.');
  $handle=fopen($keyPath,'x');
  if(!$handle) throw new RuntimeException('No se pudo crear la clave.');
  try{if(fwrite($handle,random_bytes(32))!==32)throw new RuntimeException('No se pudo escribir la clave.');}finally{fclose($handle);}

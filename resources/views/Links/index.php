@@ -15,7 +15,7 @@
  <select id="linkSize" class="form-select form-select-sm selectRegistros" aria-label="Registros por página"><option value="10">10 registros</option><option value="20" selected>20 registros</option><option value="50">50 registros</option></select>
  </div>
  <div class="tablaContainer table-responsive"><table class="tabla table table-sm table-hover align-middle" id="linkTable"><thead><tr><th>N°</th><th>Correo : contraseña</th><th>Estado</th><th>Usuario asignado</th><th>Fecha de asignación</th><th>Acción</th></tr></thead><tbody><tr><td colspan="6">Cargando…</td></tr></tbody></table></div>
- <div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><small id="linkCount" class="text-body-secondary"></small><div id="linkPages" class="paginacion"></div></div>
+ <div class="table-footer"><small id="linkCount" class="text-body-secondary"></small><div id="linkPages" class="paginacion"></div></div>
  </div>
  <div class="modal fade" id="linkAccountModal" tabindex="-1" aria-labelledby="linkModalTitle" data-bs-backdrop="static">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">

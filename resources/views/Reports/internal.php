@@ -74,7 +74,7 @@
     </div>
 
     <!-- PAGINACIÓN -->
-    <div class="paginacion" id="paginacionReportes">
+    <div class="paginacion table-footer" id="paginacionReportes">
     </div>
 
   </div>

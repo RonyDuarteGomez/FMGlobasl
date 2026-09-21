@@ -44,3 +44,9 @@ el menú móvil con AdminLTE real: apertura, cierre por fondo y Escape.
 El alcance propio utiliza el ID de la sesión validada: `uso_servicio.usuario_id` para consultas y `fm_link_audit.actor_id` para links. Cambiar el login o el nombre de la persona no traslada ni pierde su actividad. El campo antiguo `uso_servicio.usuario` es una referencia histórica y no concede acceso. Los registros sin autor identificado se conservan para el administrador; no se atribuyen al usuario que consulta el reporte. Ver [migraciones](DATABASE_MIGRATIONS.md).
 
 En Link Netflix, marcar Error manual es exclusivo del administrador. Los usuarios operativos con acceso solo pueden generar en sus cuentas; el fallo automático No Link se registra desde el resultado del generador.
+
+## Spotify
+
+`services.spotify` habilita Gestión → Spotify, sin reportes ni tarjetas implícitas. Inicialmente se concede solo al administrador. El administrador puede registrar/editar inventario, asignar, trasladar, rehabilitar y operar sobre cualquier asignación. La cuenta técnica admin no recibe asignaciones operativas.
+
+Los demás usuarios solo consultan y operan sobre sus asignaciones actuales; reciben conteos de disponibilidad sin correos/contraseñas libres ni datos del proveedor. Pueden buscar un cliente por su celular internacional exacto y registrarlo durante la solicitud, sin acceder a un listado general. Renovar, liberar, cambiar credenciales y marcar Caído se validan por el ID de usuario en servidor. Sin permiso o inactivo no accede; sus asignaciones permanecen y generan una alerta administrativa dentro de Spotify.

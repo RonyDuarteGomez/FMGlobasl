@@ -14,4 +14,6 @@ $linkAccounts=null;
 if(!empty($permissions['services.links'])) $linkAccounts=(new \FMGlobal\Repositories\LinkAccountRepository(database(),new \FMGlobal\Services\Links\AccountVault()))->summary((int)$_SESSION['usuario_id']);
 $linkConsultations=null;
 if((!empty($permissions['services.links']) || !empty($permissions['reports.links']))) $linkConsultations=(new \FMGlobal\Repositories\LinkAccountRepository(database(),new \FMGlobal\Services\Links\AccountVault()))->consultations((int)$_SESSION['usuario_id']);
+$spotifySummary=null;
+if(!empty($permissions['services.spotify']))$spotifySummary=(new \FMGlobal\Repositories\SpotifyRepository(database(),new \FMGlobal\Services\Links\AccountVault()))->dashboard((int)$_SESSION['usuario_id']);
 require FM_ROOT.'/resources/views/Dashboard/summary.php';

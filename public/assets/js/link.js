@@ -32,7 +32,7 @@ function iniciarLink() {
     if(root.dataset.admin==='1'){button('Error','error','outline-danger').disabled=row.status==='error'&&Number(row.error_type)===2;button('Editar','edit','outline-primary');button('Asignación','single','outline-primary');}
    });
    if(!rows.length){const td=tbody.insertRow().insertCell();td.colSpan=6;td.textContent='No hay cuentas que coincidan con los filtros.';}
-   $('linkCount').textContent=data.total+' cuentas';$('linkPages').replaceChildren();
+   $('linkCount').textContent=data.total+' registros · Página '+data.page+' de '+data.pages;$('linkPages').replaceChildren();
    const pages=[...new Set([1,...Array.from({length:5},(_,i)=>page+i-2).filter(n=>n>=1&&n<=data.pages),data.pages])];
    if(data.pages>1)pages.forEach(n=>{const b=document.createElement('button');b.className='btn btn-sm btn-outline-primary pagination-button'+(n===page?' is-active':'');b.textContent=n;b.type='button';b.onclick=()=>{page=n;load();};$('linkPages').append(b);});
    $('linkOrphanWarning').hidden=!data.summary.orphaned;$('linkOrphanText').textContent=data.summary.orphaned+' cuentas asignadas a usuarios sin acceso o inactivos. Libera o traslada esas cuentas.';

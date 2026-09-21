@@ -7,7 +7,7 @@ $apply=in_array('--apply',$argv,true);
 if ($apply && in_array('--check',$argv,true)) {fwrite(STDERR,"Usa --check o --apply, no ambos.\n");exit(1);}
 $config=require FM_ROOT.'/config/database.php';
 if ($apply && (!in_array($config['host'],['localhost','127.0.0.1'],true)||!str_ends_with($config['database'],'_local'))&&!in_array('--allow-deployment',$argv,true)) {fwrite(STDERR,"Fuera de la base local se requiere --allow-deployment.\n");exit(1);}
-$steps=['migrate-permissions.php','migrate-gmail.php','migrate-public-schedule.php','migrate-links.php','migrate-link-credentials.php','migrate-usage-users.php','migrate-usernames.php'];
+$steps=['migrate-permissions.php','migrate-gmail.php','migrate-public-schedule.php','migrate-links.php','migrate-link-credentials.php','migrate-usage-users.php','migrate-usernames.php','migrate-spotify.php'];
 $locked=false;
 try {
     if (PHP_VERSION_ID<80200) throw new RuntimeException('Se requiere PHP 8.2 o superior.');
@@ -19,13 +19,15 @@ try {
     }
     $keyPath=FM_ROOT.'/config/links.key';
     $hasAccounts=in_array('fm_link_accounts',$tables,true)&&(int)$db->query('SELECT COUNT(*) n FROM fm_link_accounts')->fetch_assoc()['n']>0;
-    if ($hasAccounts&&!is_file($keyPath)) throw new RuntimeException('Hay cuentas cifradas: restaura config/links.key original antes de continuar.');
+    $hasSpotify=in_array('fm_service_accounts',$tables,true)&&(int)$db->query('SELECT COUNT(*) n FROM fm_service_accounts')->fetch_assoc()['n']>0;
+    if (($hasAccounts||$hasSpotify)&&!is_file($keyPath)) throw new RuntimeException('Hay cuentas cifradas: restaura config/links.key original antes de continuar.');
     if (is_file($keyPath)) {
         $vault=new \FMGlobal\Services\Links\AccountVault();
         if ($hasAccounts) {
             $sample=$db->query('SELECT credentials,external_id,secure_value FROM fm_link_accounts LIMIT 1')->fetch_assoc();
             foreach ($sample as $cipher) $vault->decrypt($cipher);
         }
+        if ($hasSpotify) $vault->decrypt($db->query('SELECT password_cipher FROM fm_service_accounts LIMIT 1')->fetch_assoc()['password_cipher']);
     } elseif (!is_writable(dirname($keyPath))) throw new RuntimeException('config/ debe permitir crear links.key durante la migración.');
     $normalize=count(\FMGlobal\Repositories\UsernameMigration::plan($db));
     echo 'Base destino: '.$config['database'].PHP_EOL;

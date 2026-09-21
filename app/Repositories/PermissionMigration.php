@@ -41,6 +41,12 @@ final class PermissionMigration
                 $db->query("INSERT INTO fm_migrations(name,applied_at) VALUES('003_link_report',NOW())");
                 $db->query('UPDATE fm_permission_lock SET revision=revision+1 WHERE id=1');
             }
+            if (!$db->query("SELECT name FROM fm_migrations WHERE name='005_spotify'")->num_rows) {
+                $db->query("INSERT IGNORE INTO fm_permissions(code,section_name,label) VALUES('services.spotify','Gestión','Spotify')");
+                $db->query("INSERT IGNORE INTO fm_role_permissions(role_id,permission_code,allowed) VALUES(1,'services.spotify',1)");
+                $db->query("INSERT INTO fm_migrations(name,applied_at) VALUES('005_spotify',NOW())");
+                $db->query('UPDATE fm_permission_lock SET revision=revision+1 WHERE id=1');
+            }
             $db->commit();
         } catch (\Throwable $e) { $db->rollback(); throw $e; }
     }

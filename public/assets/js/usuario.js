@@ -271,6 +271,7 @@ function iniciarPaginacionUsuarios() {
   paginacion.innerHTML = "";
 
   const totalPaginas = Math.ceil(filasFiltradas.length / registrosPorPagina);
+  const summary=document.createElement('span');summary.className='small text-body-secondary';summary.textContent=filasFiltradas.length+' registros · Página '+paginaActual+' de '+Math.max(1,totalPaginas);paginacion.append(summary);
   const maxPaginasVisibles = 5;
 
   if (totalPaginas <= 1) return;

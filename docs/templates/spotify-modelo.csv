@@ -1,0 +1,3 @@
+﻿servicio,correo_principal,correo_pago,proximo_pago,correo_secundario,contrasena,perfil,estado_cuenta,asesor_usuario,cliente_nombre,cliente_celular,inicio_servicio,vencimiento_servicio,ultima_renovacion
+Spotify,principal@example.com,pago@example.com,2026-10-20,secundario1@example.com,ClaveEjemplo1,Perfil 1,habilitada,,,,,,
+Spotify,principal@example.com,pago@example.com,2026-10-20,secundario2@example.com,ClaveEjemplo2,Perfil 1,habilitada,asesor_demo,Cliente Ejemplo,+51987654321,2026-09-20,2026-10-20,

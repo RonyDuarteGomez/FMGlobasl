@@ -69,3 +69,7 @@ Cambios de lógica, permisos y pruebas funcionales: [docs/BACKEND.md](docs/BACKE
 ## Permisos dinámicos y nuevo Inicio
 
 La gestión de accesos ahora se guarda por perfil y por usuario en la base de datos. Las reglas fijas descritas anteriormente se conservan como configuración inicial, no como autorización permanente. Esta entrega agrega una migración de tablas de permisos que debe ejecutarse antes de desplegar; reemplaza la indicación anterior de que no había cambios de esquema. Consulte [Permisos y dashboard](docs/PERMISSIONS_AND_DASHBOARD.md) para uso, alcance, migración y pruebas.
+
+## Módulos
+
+- [Spotify: requerimientos y casos de uso](docs/SPOTIFY_REQUIREMENTS.md). Módulo operativo inicial disponible; requiere `php bin/migrate-spotify.php` después de preparar la clave. Pruebas: `php tests/spotify.php`. CSV, reportes, dashboard y mantenimientos adicionales quedan pendientes.

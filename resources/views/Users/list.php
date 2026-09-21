@@ -33,4 +33,4 @@
     </tbody>
   </table>
 </div>
-<div class="paginacion" id="paginacionUsuarios"></div>
+<div class="paginacion table-footer" id="paginacionUsuarios"></div>

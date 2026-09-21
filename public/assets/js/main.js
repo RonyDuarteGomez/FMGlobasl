@@ -174,6 +174,7 @@
       filtered.slice((current - 1) * count, current * count).forEach(row => row.hidden = false);
       pages.replaceChildren();
       const total = Math.ceil(filtered.length / count);
+      const summary=document.createElement('span');summary.className='small text-body-secondary';summary.textContent=filtered.length+' registros · Página '+current+' de '+Math.max(1,total);pages.append(summary);
       if (total <= 1) return;
       const start = Math.max(1, current - 2), end = Math.min(total, current + 2);
       [...new Set([1, ...Array.from({ length: end - start + 1 }, (_, i) => start + i), total])].forEach(number => {

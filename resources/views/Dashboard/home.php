@@ -6,6 +6,7 @@ $menuPaths = [
  'Reportes'=>'M4 3v18h17M8 17v-5M13 17V8M18 17V4',
  'Mantenimiento'=>'M14 6a5 5 0 0 0-6 6L3 17l4 4 5-5a5 5 0 0 0 6-6l-3 3-4-4 3-3Z',
  'Activacion'=>'M14 3 5 14h6l-1 7 9-11h-6l1-7Z',
+ 'Spotify'=>'M9 18V5l11-2v13M9 7l11-2M9 18a3 3 0 1 1-3-3c2 0 3 1 3 3Zm11-2a3 3 0 1 1-3-3c2 0 3 1 3 3Z',
  'Link'=>'m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0M16 8l1-1a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0',
  'Autoriza'=>'M3 5h18v14H3zM3 5l9 8 9-8',
  'asesorMenu'=>'M8 6a4 4 0 1 0 8 0 4 4 0 1 0-8 0M4 21v-3a8 8 0 0 1 16 0v3M10 14l2 3 2-3M12 17v4',
@@ -36,5 +37,5 @@ $menuIcon = static fn($name) => '<svg class="nav-icon" viewBox="0 0 24 24" fill=
 <div id="overlay"></div><header class="app-header navbar navbar-expand bg-body">
 <button class="toggle-btn btn btn-sm btn-outline-primary" id="toggle-btn" aria-label="Abrir o cerrar menú" aria-expanded="true">☰</button><div class="user-info"><span class="user-name"><?= $escape($nombre) ?></span><form method="POST" action="logout.php"><?= \FMGlobal\Security\Csrf::field() ?><button class="logout-btn btn btn-sm btn-outline-secondary" title="Cerrar sesión" aria-label="Cerrar sesión"><span aria-hidden="true">⏻</span></button></form></div></header>
 <main id="contenido" class="app-main"><div id="mantenedorUsuarios" aria-live="polite"></div></main></div>
-<script src="assets/js/security.js"></script><script src="assets/js/session.js"></script><script src="assets/js/main.js"></script><script src="assets/js/usuario.js"></script><script src="assets/js/activacion.js"></script><script src="assets/js/asesor.js"></script><script src="assets/js/soporte.js"></script><script src="assets/js/link.js"></script>
-<script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script><script src="assets/vendor/adminlte/adminlte.min.js"></script></body></html>
+<script src="assets/js/security.js"></script><script src="assets/js/session.js"></script><script src="assets/js/main.js"></script><script src="assets/js/usuario.js"></script><script src="assets/js/activacion.js"></script><script src="assets/js/asesor.js"></script><script src="assets/js/soporte.js"></script><script src="assets/js/link.js"></script><script src="assets/js/spotify.js"></script>
+<script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script><script src="assets/vendor/adminlte/adminlte.min.js"></script><script src="assets/js/table-actions.js"></script></body></html>

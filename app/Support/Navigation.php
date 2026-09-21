@@ -5,6 +5,7 @@ final class Navigation
     public const GROUPS=[
         'Gestión'=>[
             ['Link','Link Netflix','soporte/link.php','services.links','iniciarLink'],
+            ['Spotify','Spotify','gestion/spotify.php','services.spotify','iniciarSpotify'],
         ],
         'Servicios'=>[
             ['Activacion','Soporte clientes','activacion/activacion.php','services.activation','iniciarActivacion'],

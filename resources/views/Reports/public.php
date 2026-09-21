@@ -18,7 +18,7 @@
    <?php else: ?><td class="text-nowrap"><?= $escape(\FMGlobal\Support\DisplayDate::dateTime($row['fecha'])) ?></td><td><?= $escape($row['correo']) ?></td><td><?= $escape($chartServices[(int)$row['streaming']][0]??'Servicio') ?></td><td><?= (int)$row['num_urls'] ?></td><td><?= $escape($row['display_name']??$row['usuario']??'Clientes') ?></td><?php endif ?></tr><?php endforeach ?>
    <?php if(!$rows): ?><tr><td colspan="<?= $reportKind==='links'?4:5 ?>">No hay consultas que coincidan con los filtros.</td></tr><?php endif ?>
   </tbody></table></div>
-  <div class="paginacion"><span class="small text-body-secondary"><?= $result['total'] ?> registros · Página <?= $page ?> de <?= $pages ?></span>
+  <div class="paginacion table-footer"><span class="small text-body-secondary"><?= $result['total'] ?> registros · Página <?= $page ?> de <?= $pages ?></span>
   <?php if($pages>1): $numbers=array_unique(array_merge([1],range(max(1,$page-2),min($pages,$page+2)),[$pages])); foreach($numbers as $number): ?>
    <button type="button" class="pagination-button btn btn-sm btn-outline-primary <?= $number===$page?'is-active':'' ?>" <?= $number===$page?'aria-current="page"':'' ?> data-load-url="<?= $escape($pageUrl($number)) ?>"><?= $number ?></button>
   <?php endforeach; endif ?>

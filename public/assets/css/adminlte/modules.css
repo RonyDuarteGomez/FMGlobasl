@@ -317,3 +317,82 @@
 .dashboard-totals .activation-indicator.needs-attention { color:inherit; }
 .dashboard-totals .activation-indicator .activation-dot { display:inline-block; vertical-align:middle; }
 .dashboard-totals .activation-indicator .link-warning-icon { width:14px; height:14px; margin:0; flex-shrink:0; }
+
+/* Spotify reutiliza tablas y modales compactos del panel. */
+.spotify-toolbar { display:flex; justify-content:flex-start; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.spotify-filters { display:flex; flex-wrap:wrap; gap:8px; }
+.spotify-filters input { flex:1 1 230px; max-width:none; }
+.spotify-filters select { flex:0 1 auto; max-width:220px; }
+#spotifyTable th { white-space:nowrap; }
+#spotifyTable td { vertical-align:middle; }
+.spotify-password { min-width:90px; max-width:200px; overflow-wrap:anywhere; }
+.spotify-actions { display:flex; flex-wrap:nowrap; align-items:center; gap:4px; }
+.spotify-toolbar #spotifyAvailable { margin-left:auto; }
+#spotifyTable th, #spotifyTable td { padding:4px 5px; }
+#spotifyTable td { white-space:nowrap; }
+#spotifyTable .spotify-password { white-space:normal; }
+#spotifyTable th:last-child, #spotifyTable td:last-child { position:sticky; right:0; background:var(--bs-body-bg); border-left:1px solid var(--bs-border-color); z-index:1; }
+#spotifyTable th:last-child { background:var(--bs-tertiary-bg); }
+.spotify-secondary { background:var(--bs-tertiary-bg); }
+@media(max-width:600px) { .spotify-filters select { flex:1 1 130px; max-width:none; } }
+
+/* Datos del proveedor compartidos por las secundarias visibles en cada página. */
+#spotifyTable .spotify-main-cell { min-width:170px; max-width:240px; white-space:normal; border-right:1px solid var(--bs-border-color); }
+.spotify-main-summary { display:flex; flex-direction:column; gap:4px; overflow-wrap:anywhere; }
+.spotify-main-summary > small { margin-top:6px; }
+.spotify-main-payment { display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin-top:6px; }
+#spotifyTable .spotify-actions .btn { display:inline-flex; align-items:center; justify-content:center; flex:0 0 28px; width:28px; min-width:28px; height:28px; padding:0; white-space:nowrap; }
+
+.spotify-main-actions { display:flex; flex-wrap:nowrap; gap:6px; margin-top:6px; }
+.spotify-main-actions .btn { padding:3px 7px; white-space:nowrap; }
+
+
+.spotify-payment-summary { display:flex; flex-wrap:wrap; gap:4px 10px; }
+#spotifyPaymentsTable th, #spotifyPaymentsTable td { padding:4px 5px; }
+#spotifyPaymentsTable .spotify-main-actions { margin-top:0; }
+#spotifySalesPanel[hidden], #spotifyPaymentsPanel[hidden] { display:none!important; }
+
+.spotify-compact-form .mb-3 { margin-bottom:.5rem!important; }
+.spotify-compact-form .form-label { margin-bottom:.2rem; }
+.spotify-assignment-heading { padding:0 0 .5rem; margin-bottom:.5rem; border-bottom:1px solid var(--bs-border-color); overflow-wrap:anywhere; }
+.spotify-client-group { border:1px solid var(--bs-border-color); padding:.5rem .65rem; margin:0 0 .6rem; border-radius:var(--bs-border-radius-sm); }
+.spotify-client-group legend { float:none; width:auto; margin:0; padding:0 .25rem; font-size:inherit; font-weight:600; }
+.spotify-client-group .input-group .form-control { min-width:0; }
+
+/* Acciones de tabla: mismo tamaño, con tooltip también cuando están deshabilitadas. */
+.fm-table-icon-wrap { display:inline-flex; vertical-align:middle; }
+.fm-table-icon-wrap > .btn.fm-table-icon { display:inline-flex; align-items:center; justify-content:center; width:28px!important; min-width:28px!important; height:28px; padding:0!important; }
+.fm-table-icon-wrap > .btn:disabled { pointer-events:none; }
+#usuariosTable .table-actions, #tablaGmail .gmail-actions, #linkTable .link-actions, #spotifyPaymentsTable .spotify-main-actions { display:flex; flex-wrap:nowrap; align-items:center; gap:6px; }
+
+/* El formulario intermedio debe poder encogerse para que el cuerpo tenga scroll. */
+#spotifyModal .modal-dialog-scrollable .modal-content { min-height:0; }
+#spotifyModal .modal-dialog-scrollable #spotifyForm { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+#spotifyModal .modal-dialog-scrollable .modal-body { min-height:0; overflow-y:auto; }
+#spotifyModal .modal-header, #spotifyModal .modal-footer { flex-shrink:0; }
+.spotify-secondary-list { display:flex; flex-direction:column; gap:10px; }
+.spotify-secondary-list .spotify-secondary { margin-bottom:0; }
+.spotify-secondary-add { margin-top:12px; margin-bottom:2px; }
+
+.spotify-secondary-row { display:flex; align-items:flex-end; gap:8px; border-bottom:1px solid var(--bs-border-color); padding-bottom:4px; }
+.spotify-secondary-row:last-child { border-bottom:0; }
+.spotify-remove-secondary { flex:0 0 28px; width:28px; height:28px; padding:0; margin-bottom:.5rem; }
+
+.spotify-secondary-labels { display:grid; grid-template-columns:5fr 4fr 3fr; gap:8px; padding-right:36px; margin-bottom:4px; font-weight:600; }
+.spotify-secondary-row .form-label { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+.spotify-remove-placeholder { flex:0 0 28px; }
+.spotify-secondary-add .btn { width:28px; height:28px; padding:0; }
+@media(max-width:767px){ .spotify-secondary-labels { grid-template-columns:repeat(3,1fr); } .spotify-secondary-row .row > div { width:33.333333%; } }
+
+.spotify-dashboard-card { grid-column:1 / -1; }
+.spotify-dashboard-charts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; flex:1; align-content:center; align-items:center; padding-bottom:12px; }
+.spotify-chart-block { display:flex; min-width:0; }
+.spotify-chart-block > .account-chart { flex:1; min-width:0; }
+.dashboard-overview > .spotify-dashboard-card > .dashboard-link { margin-top:0; }
+.spotify-dashboard-charts .account-chart { display:flex; align-items:center; gap:12px; }
+.spotify-dashboard-charts .platform-donut { flex:0 0 130px; width:130px; height:130px; }
+@media(max-width:1100px){ .spotify-dashboard-charts { grid-template-columns:1fr; } }
+
+.spotify-dashboard-charts .account-legend-row strong { margin-left:0; }
+.spotify-chart-block + .spotify-chart-block { border-left:1px solid var(--bs-border-color); padding-left:20px; }
+@media(max-width:1100px){ .spotify-chart-block + .spotify-chart-block { border-left:0; border-top:1px solid var(--bs-border-color); padding-left:0; padding-top:12px; } }

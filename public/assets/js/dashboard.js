@@ -185,6 +185,7 @@ let graficoReportesChart = null;
       function renderPaginacion() {
         paginacionDiv.innerHTML = "";
         const totalPaginas = Math.ceil(filasFiltradas.length / registrosPorPagina);
+  const summary=document.createElement('span');summary.className='small text-body-secondary';summary.textContent=filasFiltradas.length+' registros · Página '+paginaActual+' de '+Math.max(1,totalPaginas);paginacionDiv.append(summary);
 
         for (let i = 1; i <= totalPaginas; i++) {
           const btn = document.createElement("button");
@@ -209,6 +210,7 @@ let graficoReportesChart = null;
   paginacionDiv.innerHTML = "";
 
   const totalPaginas = Math.ceil(filasFiltradas.length / registrosPorPagina);
+  const summary=document.createElement('span');summary.className='small text-body-secondary';summary.textContent=filasFiltradas.length+' registros · Página '+paginaActual+' de '+Math.max(1,totalPaginas);paginacionDiv.append(summary);
   const maxPaginasVisibles = 5;
 
   if (totalPaginas <= 1) return;
@@ -475,6 +477,7 @@ let graficoReportesChart = null;
       function renderPaginacion() {
         paginacionDiv.innerHTML = "";
         const totalPaginas = Math.ceil(filasFiltradas.length / registrosPorPagina);
+  const summary=document.createElement('span');summary.className='small text-body-secondary';summary.textContent=filasFiltradas.length+' registros · Página '+paginaActual+' de '+Math.max(1,totalPaginas);paginacionDiv.append(summary);
 
         for (let i = 1; i <= totalPaginas; i++) {
           const btn = document.createElement("button");
@@ -499,6 +502,7 @@ let graficoReportesChart = null;
   paginacionDiv.innerHTML = "";
 
   const totalPaginas = Math.ceil(filasFiltradas.length / registrosPorPagina);
+  const summary=document.createElement('span');summary.className='small text-body-secondary';summary.textContent=filasFiltradas.length+' registros · Página '+paginaActual+' de '+Math.max(1,totalPaginas);paginacionDiv.append(summary);
   const maxPaginasVisibles = 5;
 
   if (totalPaginas <= 1) return;

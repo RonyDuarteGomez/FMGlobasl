@@ -13,6 +13,7 @@ El ejecutor `bin/migrate-all.php` reúne, en orden, los cambios disponibles:
 5. Conversión de credenciales Link de `correo/contraseña` a `correo:contraseña`.
 6. Vinculación del historial de consultas mediante ID de usuario.
 7. Sustitución de espacios en logins por `_`, solo cuando sea necesaria y sin duplicidades.
+8. Tablas de Spotify, clientes y tipos de servicio de soporte; servicio inicial Spotify con límites 5/1. Su permiso inicial se incorpora en la migración de permisos.
 
 No cambia conexiones, dominios ni destinos de las APIs. No consulta Gmail ni genera enlaces. No copia los permisos o usuarios locales: conserva los del destino y aplica los valores iniciales de las migraciones que aún no se ejecutaron.
 
@@ -90,3 +91,9 @@ No reabrir una versión antigua que escriba consultas sin ID después de complet
 ## Pruebas
 
 `tests/usage-users.php` verifica vinculación, anónimos, ambigüedades, cambio/reutilización de login, aislamiento por ID y normalización. `tests/backend-integration.php` comprueba además el ejecutor completo, incluido ejecutarlo dos veces sobre una base temporal. Ninguna de estas pruebas llama servicios externos.
+
+## Spotify
+
+El ejecutor incluye `migrate-spotify.php` después de preparar la clave de cifrado. En local puede ejecutarse individualmente. Usa `config/links.key` para las contraseñas; conservarla aunque no existan cuentas Link Netflix. El diagnóstico y la preparación de clave revisan también la existencia de cuentas Spotify antes de permitir generar una nueva.
+
+La migración crea tablas sin cargar inventario de prueba ni cambiar usuarios existentes. CSV, dashboard, reportes y mantenimientos independientes de clientes y tipos de servicio no forman parte de esta entrega.

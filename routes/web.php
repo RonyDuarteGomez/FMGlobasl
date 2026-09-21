@@ -21,6 +21,7 @@ return array (
   'activacion/actualizar_activacion.php' => 'app/Controllers/Schedules/update.php',
   'soporte/asesor.php' => 'app/Controllers/Consultations/advisor.php',
   'soporte/soporte.php' => 'app/Controllers/Consultations/support.php',
+  'gestion/spotify.php' => 'app/Controllers/Spotify/index.php',
   'soporte/link.php' => 'app/Controllers/Links/index.php',
   'soporte/reportes.php' => 'app/Controllers/Reports/internal.php',
   'soporte/procesar_disney.php' => 'app/Controllers/Consultations/disney.php',

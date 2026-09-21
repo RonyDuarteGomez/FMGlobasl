@@ -44,6 +44,6 @@
         </tbody>
       </table>
     </div>
-    <div class="paginacion" id="paginacionGmail"></div>
+    <div class="paginacion table-footer" id="paginacionGmail"></div>
   </div>
 </div>

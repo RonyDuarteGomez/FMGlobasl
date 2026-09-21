@@ -5,6 +5,7 @@ final class PermissionCatalog
     public const ITEMS = [
         'services.activation'=>['Servicios','Soporte clientes'],
         'services.links'=>['Gestión','Link Netflix'],
+        'services.spotify'=>['Gestión','Spotify'],
         'services.gmail'=>['Servicios','Autorizar Gmail'],
         'services.advisor'=>['Servicios','Asesor'],
         'services.support'=>['Servicios','Soporte'],
@@ -37,6 +38,7 @@ final class PermissionCatalog
             'activacion/activacion.php','activacion/actualizar_activacion.php'=>'services.activation',
             'mantenimiento_gmail.php','oauth_gmail.php','oauth2callback.php'=>'services.gmail',
             'soporte/link.php'=>'services.links',
+            'gestion/spotify.php'=>'services.spotify',
             'soporte/asesor.php','soporte/procesar_disney.php','soporte/procesar_netflix1.php','soporte/procesar_netflix2.php'=>'services.advisor',
             'soporte/soporte.php','soporte/procesar_soporte.php'=>'services.support',
             default=>throw new \LogicException('Ruta protegida sin política.'),
