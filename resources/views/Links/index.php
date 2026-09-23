@@ -30,7 +30,7 @@
  <div><label class="form-label" for="linkSecure">secure <span class="text-danger">*</span></label><textarea id="linkSecure" name="secure" class="form-control form-control-sm" rows="3" maxlength="8000" spellcheck="false"></textarea></div>
  </div>
  <div data-link-panel="import" hidden>
- <a class="btn btn-sm btn-outline-primary mb-3" href="soporte/link.php?action=template" download>Descargar CSV modelo</a>
+ <a class="btn btn-sm btn-outline-primary mb-3" href="soporte/link.php?action=template" download="modelo-cuentas-link.csv">Descargar CSV modelo</a>
  <label class="form-label" for="linkCsv">Archivo CSV <span class="text-danger">*</span></label><input type="file" id="linkCsv" name="csv" class="form-control form-control-sm" accept=".csv,text/csv">
  <p class="form-text">Columnas: ID, secure, correo_contrasena. UTF-8, máximo 5 MB y 5000 filas. Las cuentas se registran activas y sin asignar.</p>
  <div id="linkImportResult" aria-live="polite"></div>

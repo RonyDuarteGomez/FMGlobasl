@@ -21,6 +21,7 @@
         ],
         "test:integration": "@php tests/backend-integration.php",
         "test:links": "@php tests/link-accounts.php",
-        "test:spotify": "@php tests/spotify.php"
+        "test:spotify": "@php tests/spotify.php",
+        "test:clients-sales": "@php tests/clients-sales.php"
     }
 }

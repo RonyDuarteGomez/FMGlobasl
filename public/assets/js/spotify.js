@@ -56,7 +56,7 @@ function iniciarSpotify() {
    else if(admin){button('Asignar','assign','primary');button('Caído','fall','outline-danger');}
 
   });
-  tbody.querySelectorAll('[data-spotify-tip]').forEach(el=>{const b=el.querySelector('button');b.removeAttribute('title');new bootstrap.Tooltip(el,{title:el.dataset.spotifyTip,container:'body',trigger:'hover focus',placement:'top'});b.addEventListener('focus',()=>bootstrap.Tooltip.getInstance(el)?.show());b.addEventListener('blur',()=>bootstrap.Tooltip.getInstance(el)?.hide());b.addEventListener('click',()=>bootstrap.Tooltip.getInstance(el)?.hide());});
+  tbody.querySelectorAll('[data-spotify-tip]').forEach(el=>{const b=el.querySelector('button');b.removeAttribute('title');window.fmTableTooltip(el,el.dataset.spotifyTip);});
   if(!rows.length){const td=tbody.insertRow().insertCell();td.colSpan=$('spotifyTable').tHead.rows[0].cells.length;td.textContent='No hay cuentas que coincidan con los filtros.';}
   $('spotifyCount').textContent=data.total+' registros · Página '+data.page+' de '+data.pages;$('spotifyPages').replaceChildren();
   if(data.pages>1){const pages=[...new Set([1,...Array.from({length:5},(_,i)=>page+i-2).filter(n=>n>0&&n<=data.pages),data.pages])];pages.forEach(n=>{const b=node('button',String(n),'btn btn-sm btn-outline-primary pagination-button'+(n===page?' is-active':''));b.type='button';b.onclick=()=>{page=n;load();};$('spotifyPages').append(b);});}

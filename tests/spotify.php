@@ -141,7 +141,7 @@ try {
  $own=(int)$db->execute_query('SELECT COUNT(DISTINCT p.account_id) n FROM fm_service_profiles p JOIN fm_service_assignments a ON a.id=p.current_assignment_id WHERE a.advisor_id=?',[$advisor])->fetch_assoc()['n'];
  spCheck($personal['accounts']['assigned']===$own&&$personal['accounts']['free']===0,'Dashboard operativo muestra solo cuentas propias, sin bolsa libre');
  spCheck(!$personal['admin']&&$global['admin'],'Solo administrador recibe indicador administrativo');
- $ownMains=(int)$db->execute_query('SELECT COUNT(DISTINCT c.main_id) n FROM fm_service_accounts c JOIN fm_service_profiles p ON p.account_id=c.id JOIN fm_service_assignments a ON a.id=p.current_assignment_id WHERE a.advisor_id=?',[$advisor])->fetch_assoc()['n'];spCheck(array_sum($personal['payments'])===$ownMains,'Pagos propios sin duplicar principales');
+ spCheck($personal['payments']===null,'Pagos no disponibles para asesor');
  $owned=$repo->listing($advisor,[])['rows'][0];$op($advisor,'fall',['assignment_id'=>$owned['assignment_id'],'revision'=>$owned['revision'],'account_revision'=>$owned['account_revision']]);
  spCheck($repo->dashboard($advisor)['accounts']['fallen']===1,'Asesor conserva conteo de cuenta propia caída');spCheck($repo->dashboard($other)['accounts']['fallen']===0,'No expone caída ajena');
  spCheck($repo->metadata($admin)['fallen']>0&&$repo->metadata($advisor)['fallen']===0,'Aviso de caídas exclusivo de administrador');
@@ -152,5 +152,7 @@ try {
  $op($admin,'fall',['account_id'=>$ready['account_id'],'account_revision'=>$ready['account_revision']]);
  $latest=$repo->listing($admin,['q'=>$owned['email'],'state'=>'fallen'])['rows'][0];
  spCheck((int)$latest['fallen_reporter_id']===$admin,'Nueva caída muestra a quien reportó esta vez, no al antiguo asesor');
+ spCheck($repo->dashboard($advisor)['payments']===null,'Asesor no recibe datos de pagos en dashboard');
+ spCheck(is_array($repo->dashboard($admin)['payments']),'Administrador recibe pagos en dashboard');
  echo "$count comprobaciones de Spotify correctas, en base temporal y sin servicios externos.\n";
 }finally{$db->query("DROP DATABASE IF EXISTS `$name`");$db->close();}

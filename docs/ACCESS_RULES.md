@@ -50,3 +50,7 @@ En Link Netflix, marcar Error manual es exclusivo del administrador. Los usuario
 `services.spotify` habilita Gestión → Spotify, sin reportes ni tarjetas implícitas. Inicialmente se concede solo al administrador. El administrador puede registrar/editar inventario, asignar, trasladar, rehabilitar y operar sobre cualquier asignación. La cuenta técnica admin no recibe asignaciones operativas.
 
 Los demás usuarios solo consultan y operan sobre sus asignaciones actuales; reciben conteos de disponibilidad sin correos/contraseñas libres ni datos del proveedor. Pueden buscar un cliente por su celular internacional exacto y registrarlo durante la solicitud, sin acceder a un listado general. Renovar, liberar, cambiar credenciales y marcar Caído se validan por el ID de usuario en servidor. Sin permiso o inactivo no accede; sus asignaciones permanecen y generan una alerta administrativa dentro de Spotify.
+
+## Clientes y Ventas Spotify
+
+`clients.manage` permite mantener el registro compartido de clientes. `reports.spotify_sales` permite el reporte independiente de Spotify: administrador con permiso ve todo, los demás solo su propio ID. Ningún administrador, incluida la cuenta técnica admin, evita las denegaciones de perfil/usuario; aparece en el selector de permisos. Se conserva la protección del último gestor activo y la exclusión de TI en asignaciones. Ver [detalle de módulos](CLIENTS_AND_SPOTIFY_SALES.md).

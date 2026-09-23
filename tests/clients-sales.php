@@ -1,0 +1,71 @@
+<?php
+if(PHP_SAPI!=='cli')exit;
+require dirname(__DIR__).'/bootstrap/app.php';
+use FMGlobal\Repositories\{SpotifyMigration,SpotifyRepository,PermissionMigration,PermissionRepository,UserRepository,ScheduleRepository};
+use FMGlobal\Services\Spotify\Rules;
+use FMGlobal\Services\Links\AccountVault;
+use FMGlobal\Services\Users\UserService;
+use FMGlobal\Http\HttpException;
+$config=require FM_ROOT.'/config/database.php';
+if(!in_array($config['host'],['localhost','127.0.0.1'],true)||!str_ends_with($config['database'],'_local'))throw new RuntimeException('Solo pruebas locales.');
+mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);$db=new mysqli($config['host'],$config['user'],$config['password']);$source=$config['database'];if(!preg_match('/^[a-zA-Z0-9_]+$/D',$source))throw new RuntimeException('Base no válida.');$name='fm_spotify_test_'.bin2hex(random_bytes(5));$count=0;
+function spCheck(bool $ok,string $message):void{global $count;if(!$ok)throw new RuntimeException($message);$count++;}
+function spReject(callable $fn,int $status,string $message):void{try{$fn();}catch(HttpException $e){spCheck($e->status===$status,$message.' ('.$e->status.')');return;}throw new RuntimeException($message);}
+try {
+ $db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4");foreach(['usuarios','personal','activacion','rol'] as $t)$db->query("CREATE TABLE `$name`.`$t` LIKE `$source`.`$t`");$db->select_db($name);$db->set_charset('utf8mb4');
+ $db->query("INSERT INTO rol VALUES(1,'Administrador'),(2,'Asesor'),(3,'Soporte')");PermissionMigration::apply($db);SpotifyMigration::apply($db);SpotifyMigration::apply($db);
+ $serviceId=(int)$db->query("SELECT id FROM fm_service_types WHERE code='spotify'")->fetch_assoc()['id'];
+ spCheck((int)$db->query('SELECT COUNT(*) n FROM fm_service_types')->fetch_assoc()['n']===1,'Migración repetible');
+ $users=new UserService(new UserRepository($db),new ScheduleRepository($db));$seed=fn($u,$r)=>['usuario'=>$u,'nombre'=>'Persona '.$u,'apellido_paterno'=>'Prueba','rol'=>(string)$r,'clave'=>'Synthetic test only 123!'];
+ $admin=$users->save($seed('admin',1),'test',0);$advisor=$users->save($seed('asesor_sp',2),'test',$admin);$other=$users->save($seed('soporte_sp',3),'test',$admin);
+ $permissions=new PermissionRepository($db);spCheck(!empty($permissions->effective($admin)['services.spotify'])&&empty($permissions->effective($advisor)['services.spotify']),'Permiso solo administrador por defecto');
+ $testKey=random_bytes(32);$repo=new SpotifyRepository($db,new AccountVault($testKey));$op=fn($actor,$action,$data)=>$repo->execute($actor,$action,$data+['request_key'=>bin2hex(random_bytes(16))]);
+ spReject(fn()=>$repo->listing($advisor,[]),403,'Sin permiso no lista');
+ foreach([$advisor,$other] as $uid)$db->execute_query("INSERT INTO fm_user_permissions VALUES(?,'services.spotify',1)",[$uid]);
+ $clients=new \FMGlobal\Repositories\ClientsRepository($db);$sales=new \FMGlobal\Repositories\SpotifySalesRepository($db);
+ spReject(fn()=>$clients->listing($advisor,[]),403,'Clientes requiere permiso propio');spReject(fn()=>$sales->report($advisor,[]),403,'Reporte requiere permiso independiente');
+ foreach([$advisor,$other] as $uid)foreach(['clients.manage','reports.spotify_sales'] as $code)$db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,1)',[$uid,$code]);
+ $clients->save($advisor,['name'=>'Cliente Uno','phone'=>'+51 (987) 654-321']);
+ spCheck($clients->listing($other,[])['total']===1,'Clientes compartidos para quien tenga permiso');
+ spReject(fn()=>$clients->save($admin,['name'=>'Duplicado','phone'=>'+51987654321']),409,'Celular normalizado único');
+ spReject(fn()=>$clients->save($admin,['name'=>'','phone'=>'+51987654321']),422,'Nombre obligatorio');
+ $main=['service_id'=>$serviceId,'email'=>'principal@example.test','payment_email'=>'pago@example.test','next_payment'=>date('Y-m-d'),'accounts'=>[['email'=>'one@example.test','password'=>'test-secret','profiles'=>[['name'=>'Perfil 1']]],['email'=>'two@example.test','password'=>'test-two','profiles'=>[['name'=>'Perfil 1']]]]];
+ $mid=$op($admin,'save',$main)['id'];$pid=$repo->main($admin,$mid)['accounts'][0]['profiles'][0]['id'];
+ $operation=['service_id'=>$serviceId,'profile_id'=>$pid,'advisor_id'=>$advisor,'phone'=>'+51987654321','client_name'=>'Cliente Uno','start_date'=>date('Y-m-d'),'request_key'=>bin2hex(random_bytes(16))];$assignment=$repo->execute($admin,'obtain',$operation);$repo->execute($admin,'obtain',$operation);
+ spCheck($sales->report($advisor,[])['totals']['sale']===1,'Venta administrativa al asesor, reintento no duplica');
+ $clients->save($admin,['original_phone'=>'+51987654321','original_name'=>'Cliente Uno','name'=>'Cliente Actualizado','phone'=>'+12025550123']);
+ spCheck($repo->listing($advisor,[])['rows'][0]['phone']==='+12025550123','Cambiar celular conserva asignación mediante cascada');
+ spReject(fn()=>$clients->save($advisor,['original_phone'=>'+51987654321','original_name'=>'Cliente Uno','name'=>'Viejo','phone'=>'+12025550124']),409,'Edición obsoleta rechazada');
+ $row=$repo->listing($advisor,[])['rows'][0];$op($admin,'renew',['assignment_id'=>$row['assignment_id'],'revision'=>$row['revision']]);
+ $row=$repo->listing($advisor,[])['rows'][0];$op($admin,'transfer',['assignment_id'=>$row['assignment_id'],'revision'=>$row['revision'],'advisor_id'=>$other]);
+ $row=$repo->listing($other,[])['rows'][0];$op($other,'renew',['assignment_id'=>$row['assignment_id'],'revision'=>$row['revision']]);
+ spCheck($sales->report($advisor,[])['totals']===['sale'=>1,'renewal'=>1,'loss'=>0,'fallen'=>0],'Historial anterior conserva vendedor tras reasignar');
+ spCheck($sales->report($other,['seller_id'=>$advisor])['totals']===['sale'=>0,'renewal'=>1,'loss'=>0,'fallen'=>0],'Filtro manipulado no amplía alcance');
+ $row=$repo->listing($other,[])['rows'][0];$op($admin,'release',['assignment_id'=>$row['assignment_id'],'revision'=>$row['revision'],'account_revision'=>$row['account_revision'],'password'=>'changed-secret']);
+ spCheck($sales->report($other,[])['totals']['loss']===1,'Liberación administrativa cuenta para responsable');
+ $assignment=$op($admin,'obtain',['service_id'=>$serviceId,'profile_id'=>$pid,'advisor_id'=>$advisor,'phone'=>'+12025550123','client_name'=>'Cliente Actualizado','start_date'=>date('Y-m-d')]);
+ $row=$repo->listing($advisor,[])['rows'][0];$op($admin,'fall',['assignment_id'=>$row['assignment_id'],'revision'=>$row['revision'],'account_revision'=>$row['account_revision']]);
+ $report=$sales->report($advisor,[]);spCheck($report['totals']['fallen']===1&&$report['totals']['loss']===0,'Caída no duplica pérdida');
+ $free=$repo->listing($admin,['q'=>'two@example.test'])['rows'][0];$before=$sales->report($admin,[])['totals'];$op($admin,'fall',['account_id'=>$free['account_id'],'account_revision'=>$free['account_revision']]);spCheck($sales->report($admin,[])['totals']===$before,'Caída sin asesor no inventa vendedor');
+ spCheck($sales->report($admin,[])['total']===2,'Administrador ve una fila por vendedor');
+ spCheck(count($sales->report($admin,['period'=>'today'])['dates'])===1,'Hoy es un día');
+ foreach(['week'=>7,'month'=>30,'six'=>180,'year'=>365] as $period=>$days)spCheck(count($sales->report($admin,['period'=>$period])['dates'])===$days,'Periodo de '.$days.' días');
+ spCheck(\FMGlobal\Repositories\SpotifySalesRepository::period(['period'=>'custom','from'=>'2026-01-01','to'=>'2026-01-01'])===['2026-01-01','2026-01-01'],'Rango incluye fecha inicial y final');
+ spReject(fn()=>$sales->report($admin,['period'=>'custom','from'=>'2026-02-30','to'=>'2026-03-01']),422,'Fecha imposible');
+ spReject(fn()=>$sales->report($admin,['period'=>'custom','from'=>'2026-03-02','to'=>'2026-03-01']),422,'Rango invertido');
+ $db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$admin,'clients.manage']);spReject(fn()=>$clients->listing($admin,[]),403,'Incluso admin TI pierde Clientes al denegar');
+ $db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$admin,'reports.spotify_sales']);spReject(fn()=>$sales->report($admin,[]),403,'Incluso admin TI pierde reporte al denegar');
+ PermissionMigration::apply($db);spReject(fn()=>$sales->report($admin,[]),403,'Migración conserva denegación administrativa');
+ $db->execute_query('DELETE FROM fm_user_permissions WHERE user_id=? AND permission_code=?',[$admin,'reports.spotify_sales']);
+ $before=$sales->report($admin,[])['totals'];$db->query("DELETE FROM fm_migrations WHERE name='007_spotify_sales_history_v2'");\FMGlobal\Repositories\SpotifySalesMigration::apply($db);\FMGlobal\Repositories\SpotifySalesMigration::apply($db);spCheck($sales->report($admin,[])['totals']===$before,'Backfill repetible sin duplicados');
+ // Simular auditoría anterior sin snapshots, con reasignación posterior.
+ $db->query("UPDATE fm_service_assignments SET closed_at=DATE_SUB(closed_at,INTERVAL 1 SECOND) WHERE close_reason='fallen'");$db->query("DELETE FROM fm_spotify_sales_events");$db->query("DELETE FROM fm_migrations WHERE name='007_spotify_sales_history_v2'");$audits=$db->query('SELECT id,details_json FROM fm_service_audit')->fetch_all(MYSQLI_ASSOC);foreach($audits as $a){$details=json_decode($a['details_json'],true);unset($details['seller_ids']);$db->execute_query('UPDATE fm_service_audit SET details_json=? WHERE id=?',[json_encode($details),$a['id']]);}\FMGlobal\Repositories\SpotifySalesMigration::apply($db);spCheck($sales->report($admin,[])['totals']===$before,'Reconstrucción histórica desde auditoría');
+ spCheck($sales->report($advisor,[])['totals']['renewal']===1,'Backfill conserva responsable previo a reasignación');
+ $csv=$clients->importFile($advisor,"nombre,celular\nCliente CSV,+442071234567\nDuplicado,+442071234567\nInválido,abc\n");
+ spCheck($csv['imported']===1&&count($csv['errors'])===2,'CSV importa válidos y reporta duplicados e inválidos');
+ spCheck($csv['errors'][0]['phone']==='+442071234567','CSV conserva datos rechazados');
+ spReject(fn()=>$clients->importFile($admin,"nombre,celular\nPrueba,+442071234568"),403,'CSV respeta permisos');
+ spReject(fn()=>$clients->importFile($advisor,"otro,celular\nPrueba,+442071234568"),422,'CSV exige cabecera del modelo');
+ $graph=$sales->report($admin,[]);foreach($graph['series'] as $series)spCheck(array_sum($series['values'])===$graph['totals'][$series['id']],'Línea suma todos los vendedores: '.$series['id']);
+ echo "$count comprobaciones de Clientes y Ventas Spotify correctas.\n";
+}finally{$db->query("DROP DATABASE IF EXISTS `$name`");$db->close();}

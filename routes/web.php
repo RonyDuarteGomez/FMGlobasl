@@ -1,5 +1,7 @@
 <?php
 return array (
+  'gestion/clientes.php'=>'app/Controllers/Clients/index.php',
+  'reportes/ventas-spotify.php'=>'app/Controllers/Reports/spotify-sales.php',
   'session.php' => 'app/Controllers/Auth/session.php',
   'permisos/save.php' => 'app/Controllers/Permissions/save.php',
   'permisos/index.php' => 'app/Controllers/Permissions/index.php',

@@ -322,15 +322,20 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  $permissionRepo->save('user',$supportId,$supportValues,$adminId,$permissionRepo->revision());
  $db->execute_query('UPDATE usuarios SET usuario=? WHERE id=?',['admin',$adminId]);
  verify($permissionRepo->isSuperuser($adminId),'Reconoce cuenta superusuario reservada');
+ // Cada endpoint descarga su propio esquema y nombre de archivo.
+ foreach(['soporte/link.php'=>['modelo-cuentas-link.csv','ID,secure,correo_contrasena'],'gestion/spotify.php'=>['spotify-modelo.csv',implode(',',\FMGlobal\Services\Spotify\CsvImport::HEADER)],'gestion/clientes.php'=>['clientes-modelo.csv','nombre,celular']] as $path=>[$filename,$header]){
+  $csv=http($adminBrowser,$path.'?action=template');verify($csv['status']===200,'Descarga CSV '.$path);verify(str_contains($csv['headers'],$filename),'Nombre CSV '.$path);verify(strtok(ltrim($csv['body'],"\xEF\xBB\xBF"),"\r\n")===$header,'Columnas propias '.$path);
+ }
  $db->execute_query('INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$adminId,'services.links']);
- verify(!in_array(false,$permissionRepo->effective($adminId),true) && count($permissionRepo->effective($adminId))===count(\FMGlobal\Security\PermissionCatalog::ITEMS),'Superusuario conserva todos los permisos pese a excepciones');
+ verify(empty($permissionRepo->effective($adminId)['services.links']),'Admin respeta permisos denegados');
+ verify(http($adminBrowser,'soporte/link.php')['status']===403,'Admin no elude permiso por URL directa');
  $page=http($adminBrowser,'permisos/index.php');
  verify($page['status']===200 && str_contains($page['body'],'value="role" selected'),'Permisos abre por perfil');
  $page=http($adminBrowser,'permisos/index.php?type=user');
- verify($page['status']===200 && !str_contains($page['body'],'>admin</option>'),'Selector excluye superusuario');
- verify(http($adminBrowser,'permisos/index.php?type=user&id='.$adminId)['status']===404,'No se abre configuracion del superusuario por URL');
+ verify($page['status']===200 && str_contains($page['body'],'value="'.$adminId.'"'),'Selector permite configurar admin');
+ verify(http($adminBrowser,'permisos/index.php?type=user&id='.$adminId)['status']===200,'Admin tiene configuración de permisos por URL');
  $values=array_fill_keys(array_keys(\FMGlobal\Security\PermissionCatalog::ITEMS),'deny');
- verify(http($adminBrowser,'permisos/save.php','POST',['_csrf'=>$csrf,'type'=>'user','id'=>$adminId,'revision'=>$permissionRepo->revision(),'permissions'=>$values])['status']===403,'No se modifican permisos del superusuario por POST');
+ verify(http($adminBrowser,'permisos/save.php','POST',['_csrf'=>$csrf,'type'=>'user','id'=>$adminId,'revision'=>$permissionRepo->revision(),'permissions'=>$values])['status']===409,'No se puede quitar al último gestor, también para admin');
  $db->execute_query('UPDATE usuarios SET usuario=? WHERE id=?',['test_admin',$adminId]);
  verify(http($adminBrowser,'logout.php','POST',['_csrf'=>$csrf])['status']===302,'Logout con CSRF');
  verify(http($adminBrowser,'usuario/usuarios.php')['status']===401,'Logout elimina sesión');
@@ -357,6 +362,20 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  verify(!str_contains($spList['body'],'main-sp@')&&!str_contains($spList['body'],'payment-sp@')&&!str_contains($spList['body'],'next_payment'),'HTTP no expone proveedor al operativo');
  $db->execute_query("UPDATE fm_user_permissions SET allowed=0 WHERE user_id=? AND permission_code='services.spotify'",[$advisorId]);
  verify(http($advisor,'gestion/spotify.php?action=list')['status']===403,'Revocación Spotify bloquea sesión existente');
+ // Clientes y reporte: autorización independiente y acceso HTTP real.
+ verify(http($probe,'gestion/clientes.php?action=list')['status']===401,'Clientes exige sesión');
+ verify(http($adminBrowser,'gestion/clientes.php')['status']===200,'Admin con permiso abre Clientes');
+ verify(http($advisor,'gestion/clientes.php')['status']===403,'Asesor sin permiso no abre Clientes');
+ verify(http($adminBrowser,'gestion/clientes.php','POST',['payload'=>'{}'])['status']===419,'Clientes exige CSRF');
+ $saved=http($adminBrowser,'gestion/clientes.php','POST',['_csrf'=>$csrf,'payload'=>json_encode(['name'=>'Cliente Mantenimiento','phone'=>'+12025550666'])]);verify($saved['status']===200,'Alta de cliente HTTP');
+ $duplicate=http($adminBrowser,'gestion/clientes.php','POST',['_csrf'=>$csrf,'payload'=>json_encode(['name'=>'Otro','phone'=>'+1 (202) 555-0666'])]);verify($duplicate['status']===409,'Duplicado HTTP normalizado');
+ verify(http($advisor,'reportes/ventas-spotify.php?action=list')['status']===403,'Reporte independiente de Spotify');
+ $db->execute_query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,'reports.spotify_sales',1) ON DUPLICATE KEY UPDATE allowed=1",[$advisorId]);
+ $r=http($advisor,'reportes/ventas-spotify.php?action=list&period=today');$body=json_decode($r['body'],true);verify($r['status']===200&&$body['totals']['sale']===1,'Reporte propio disponible sin permiso operativo');
+ verify(http($adminBrowser,'reportes/ventas-spotify.php')['status']===200,'Reporte administrativo visible');
+ foreach(['clients.manage'=>'gestion/clientes.php','reports.spotify_sales'=>'reportes/ventas-spotify.php'] as $code=>$path){
+  $db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$adminId,$code]);verify(http($adminBrowser,$path)['status']===403,'Administrador pierde acceso a '.$code);verify(!str_contains(http($adminBrowser,'home.php')['body'],'data-module="'.$path.'"'),'Menú oculta '.$code);$db->execute_query('DELETE FROM fm_user_permissions WHERE user_id=? AND permission_code=?',[$adminId,$code]);
+ }
  $migrationCounts=$db->query('SELECT COUNT(*) n FROM uso_servicio')->fetch_assoc();
  foreach ([['--check'],['--apply','--allow-deployment'],['--apply','--allow-deployment']] as $flags) {
    $process=proc_open(array_merge([PHP_BINARY,FM_ROOT.'/bin/migrate-all.php'],$flags),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$migrationPipes,FM_ROOT,$env);

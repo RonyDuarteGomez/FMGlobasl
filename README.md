@@ -73,3 +73,5 @@ La gestión de accesos ahora se guarda por perfil y por usuario en la base de da
 ## Módulos
 
 - [Spotify: requerimientos y casos de uso](docs/SPOTIFY_REQUIREMENTS.md). Módulo operativo inicial disponible; requiere `php bin/migrate-spotify.php` después de preparar la clave. Pruebas: `php tests/spotify.php`. CSV, reportes, dashboard y mantenimientos adicionales quedan pendientes.
+
+Clientes y Ventas Spotify: [requerimientos, permisos y migración](docs/CLIENTS_AND_SPOTIFY_SALES.md). Pruebas: `php tests/clients-sales.php`.

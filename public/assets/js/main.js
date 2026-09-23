@@ -61,6 +61,7 @@
   syncMenuState();
   async function loadModule(url, init = '') {
     pending?.abort(); pending = new AbortController();
+    content.querySelectorAll('.fm-table-icon-wrap,[data-spotify-tip]').forEach(el=>bootstrap.Tooltip.getInstance(el)?.dispose());
     content.textContent = 'Cargando…'; closeMobile();
     try {
       const response = await fetch(url, { signal: pending.signal, credentials: 'same-origin' });

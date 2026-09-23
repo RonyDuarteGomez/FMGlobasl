@@ -16,5 +16,6 @@ final class SpotifyMigration
    "CREATE TABLE IF NOT EXISTS fm_service_payments(id BIGINT AUTO_INCREMENT PRIMARY KEY,main_id INT NOT NULL,actor_id INT NOT NULL,previous_date DATE NOT NULL,next_date DATE NOT NULL,created_at DATETIME NOT NULL,FOREIGN KEY(main_id) REFERENCES fm_service_mains(id),INDEX(main_id,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   ] as $sql)$db->query($sql);
   $db->query("INSERT IGNORE INTO fm_service_types(code,name,max_accounts,max_profiles) VALUES('spotify','Spotify',5,1)");
+  SpotifySalesMigration::apply($db);
  }
 }

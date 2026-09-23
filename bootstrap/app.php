@@ -38,13 +38,13 @@ function fm_dispatch(string $route): void
 {
     ini_set('display_errors', '0');
     $routes = require FM_ROOT.'/routes/web.php';
-    $json = (in_array($route,['soporte/link.php','gestion/spotify.php'],true) && (($_SERVER['REQUEST_METHOD']??'GET')==='POST' || isset($_GET['action']))) || str_starts_with($route,'api/') || in_array($route,['session.php','usuario/usuario_get.php','permisos/save.php','activacion/actualizar_activacion.php'],true);
+    $json = (in_array($route,['soporte/link.php','gestion/spotify.php','gestion/clientes.php','reportes/ventas-spotify.php'],true) && (($_SERVER['REQUEST_METHOD']??'GET')==='POST' || isset($_GET['action']))) || str_starts_with($route,'api/') || in_array($route,['session.php','usuario/usuario_get.php','permisos/save.php','activacion/actualizar_activacion.php'],true);
     $level = ob_get_level(); ob_start();
     try {
         if (!isset($routes[$route])) throw new \FMGlobal\Http\HttpException(404,'Página no encontrada.');
         $method=$_SERVER['REQUEST_METHOD']??'GET';
         $postOnly=['session.php','permisos/save.php','logout.php','oauth_gmail.php','usuario/usuario_save.php','usuario/usuario_toggle.php','activacion/actualizar_activacion.php','soporte/procesar_disney.php','soporte/procesar_netflix1.php','soporte/procesar_netflix2.php','soporte/procesar_soporte.php'];
-        $allowed=in_array($route,$postOnly,true)?['POST']:(in_array($route,['login.php','validacion.php','soporte/link.php','gestion/spotify.php','mantenimiento_gmail.php'],true)?['GET','POST']:['GET']);
+        $allowed=in_array($route,$postOnly,true)?['POST']:(in_array($route,['login.php','validacion.php','soporte/link.php','gestion/spotify.php','gestion/clientes.php','mantenimiento_gmail.php'],true)?['GET','POST']:['GET']);
         if (!in_array($method,$allowed,true)) { header('Allow: '.implode(', ',$allowed)); throw new \FMGlobal\Http\HttpException(405,'Método no permitido.'); }
         if (!str_starts_with($route,'api/')) \FMGlobal\Security\Session::start();
         \FMGlobal\Security\Access::check($route);

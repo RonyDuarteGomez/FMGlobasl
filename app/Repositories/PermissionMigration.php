@@ -47,6 +47,10 @@ final class PermissionMigration
                 $db->query("INSERT INTO fm_migrations(name,applied_at) VALUES('005_spotify',NOW())");
                 $db->query('UPDATE fm_permission_lock SET revision=revision+1 WHERE id=1');
             }
+            if (!$db->query("SELECT name FROM fm_migrations WHERE name='006_clients_sales'")->num_rows) {
+                foreach(['clients.manage','reports.spotify_sales'] as $code){[$section,$label]=PermissionCatalog::ITEMS[$code];$db->execute_query('INSERT IGNORE INTO fm_permissions(code,section_name,label) VALUES(?,?,?)',[$code,$section,$label]);$db->execute_query('INSERT IGNORE INTO fm_role_permissions(role_id,permission_code,allowed) VALUES(1,?,1)',[$code]);}
+                $db->query("INSERT INTO fm_migrations(name,applied_at) VALUES('006_clients_sales',NOW())");$db->query('UPDATE fm_permission_lock SET revision=revision+1 WHERE id=1');
+            }
             $db->commit();
         } catch (\Throwable $e) { $db->rollback(); throw $e; }
     }

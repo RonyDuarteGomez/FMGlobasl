@@ -396,3 +396,20 @@
 .spotify-dashboard-charts .account-legend-row strong { margin-left:0; }
 .spotify-chart-block + .spotify-chart-block { border-left:1px solid var(--bs-border-color); padding-left:20px; }
 @media(max-width:1100px){ .spotify-chart-block + .spotify-chart-block { border-left:0; border-top:1px solid var(--bs-border-color); padding-left:0; padding-top:12px; } }
+
+.sales-metric { width:auto; max-width:220px; }
+.sales-chart { overflow-x:auto; min-height:210px; color:var(--bs-secondary-color); }
+#salesCustom[hidden] { display:none!important; }
+#clientsTable th,#clientsTable td,#salesTable th,#salesTable td { padding:5px 8px; }
+
+/* Ventas: filtros compactos, calendarios alineados con los controles. */
+#spotifySalesReport .sales-filters { display:grid; grid-template-columns:minmax(120px,1fr) minmax(140px,170px) minmax(145px,165px) minmax(145px,165px) 120px; gap:8px; align-items:end; }
+#spotifySalesReport .sales-date-filters { display:contents; }
+#spotifySalesReport .sales-filters :is(input,select) { width:100%; min-width:0; max-width:none; }
+#spotifySalesReport .sales-date-filters .form-label { margin-bottom:3px; font-size:.8rem; }
+@media(max-width:1000px) { #spotifySalesReport .sales-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { #spotifySalesReport .sales-filters > input { grid-column:1 / -1; } }
+
+/* Ocultar avisos al expirar aunque utilicen utilidades de Bootstrap. */
+.alert[hidden] { display:none!important; }
+@media(min-width:1101px) { .spotify-dashboard-charts-personal { grid-template-columns:repeat(2,minmax(0,1fr)); } }

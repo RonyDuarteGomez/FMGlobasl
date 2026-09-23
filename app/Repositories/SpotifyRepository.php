@@ -12,7 +12,10 @@ final class SpotifyRepository {
   $user['admin']=(int)$user['rol_id']===1;return $user;
  }
  private function admin(int $id):void {if(!$this->actor($id)['admin'])throw new HttpException(403,'Acción exclusiva del administrador.');}
- private function audit(int $actor,string $action,int $id,array $details=[]):void {$this->db->execute_query('INSERT INTO fm_service_audit(actor_id,action,entity_id,details_json,created_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$actor,$action,$id,json_encode($details,JSON_THROW_ON_ERROR)]);}
+ private function audit(int $actor,string $action,int $id,array $details=[]):void {$this->db->execute_query('INSERT INTO fm_service_audit(actor_id,action,entity_id,details_json,created_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$actor,$action,$id,json_encode($details,JSON_THROW_ON_ERROR)]);
+  $auditId=(int)$this->db->insert_id;$kind=['obtain'=>'sale','renew'=>'renewal','release'=>'loss','fall'=>'fallen'][$action]??null;
+  if($kind)foreach(array_unique($details['seller_ids']??[]) as $seller)$this->db->execute_query('INSERT INTO fm_spotify_sales_events(audit_id,seller_id,actor_id,kind,event_date) VALUES(?,?,?,?,DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$auditId,$seller,$actor,$kind]);
+ }
  public function execute(int $actor,string $action,array $input):array {
   $this->actor($actor);$key=$input['request_key']??'';
   if(!is_string($key)||!preg_match('/^[a-f0-9]{32}$/D',$key))throw new HttpException(422,'Identificador de operación no válido.');
@@ -174,7 +177,7 @@ final class SpotifyRepository {
   $this->db->execute_query('INSERT INTO fm_service_assignments(profile_id,client_phone,advisor_id,start_date,end_date,created_by,created_at) VALUES(?,?,?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$profile['id'],$phone,$target,$start,Rules::month($start),$actor]);$id=(int)$this->db->insert_id;
   $this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=? WHERE id=? AND current_assignment_id IS NULL',[$id,$profile['id']]);
   if($who['admin']&&array_key_exists('password',$input)){$row=$this->assignment($actor,['assignment_id'=>$id,'revision'=>1]);$this->changeCredentials($actor,$input,$row,false);}
-  $this->audit($actor,'obtain',$id,['advisor_id'=>$target]);return ['available'=>true,'assignment_id'=>$id,'message'=>'Cuenta asignada.'];
+  $this->audit($actor,'obtain',$id,['advisor_id'=>$target,'seller_ids'=>[$target]]);return ['available'=>true,'assignment_id'=>$id,'message'=>'Cuenta asignada.'];
  }
  public function assignedDetails(int $actor,int $id):array {
   $who=$this->actor($actor);$row=$this->db->execute_query('SELECT a.id,a.revision,a.advisor_id,p.name profile,c.email,c.password_cipher,c.revision account_revision FROM fm_service_assignments a JOIN fm_service_profiles p ON p.current_assignment_id=a.id JOIN fm_service_accounts c ON c.id=p.account_id WHERE a.id=? AND a.closed_at IS NULL',[$id])->fetch_assoc();
@@ -183,7 +186,7 @@ final class SpotifyRepository {
  private function renew(int $actor,array $input):array {
   $row=$this->assignment($actor,$input);$end=Rules::month($row['end_date']);
   $this->db->execute_query('INSERT INTO fm_service_renewals(assignment_id,previous_end,new_end,actor_id,created_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$row['id'],$row['end_date'],$end,$actor]);
-  $this->db->execute_query('UPDATE fm_service_assignments SET end_date=?,last_renewed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),revision=revision+1 WHERE id=?',[$end,$row['id']]);$this->audit($actor,'renew',(int)$row['id'],['before'=>$row['end_date'],'after'=>$end]);return ['message'=>'Servicio renovado hasta '.$end.'.'];
+  $this->db->execute_query('UPDATE fm_service_assignments SET end_date=?,last_renewed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),revision=revision+1 WHERE id=?',[$end,$row['id']]);$this->audit($actor,'renew',(int)$row['id'],['before'=>$row['end_date'],'after'=>$end,'seller_ids'=>[(int)$row['advisor_id']]]);return ['message'=>'Servicio renovado hasta '.$end.'.'];
  }
  private function changeCredentials(int $actor,array $input,array $row,bool $release):void {
   if((int)($input['account_revision']??0)!==(int)$row['account_revision'])throw new HttpException(409,'Cambió la contraseña o el perfil. Actualiza la tabla.');
@@ -198,16 +201,17 @@ final class SpotifyRepository {
  private function credentials(int $actor,array $input):array {$row=$this->assignment($actor,$input);$this->changeCredentials($actor,$input,$row,false);return ['message'=>'Contraseña y perfil registrados.'];}
  private function release(int $actor,array $input):array {
   $row=$this->assignment($actor,$input);$this->changeCredentials($actor,$input,$row,true);
-  $this->db->execute_query("UPDATE fm_service_assignments SET closed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),close_reason='release',revision=revision+1 WHERE id=?",[$row['id']]);$this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=NULL WHERE id=?',[$row['profile_id']]);$this->audit($actor,'release',(int)$row['id']);return ['message'=>'Cuenta liberada.'];
+  $this->db->execute_query("UPDATE fm_service_assignments SET closed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),close_reason='release',revision=revision+1 WHERE id=?",[$row['id']]);$this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=NULL WHERE id=?',[$row['profile_id']]);$this->audit($actor,'release',(int)$row['id'],['seller_ids'=>[(int)$row['advisor_id']]]);return ['message'=>'Cuenta liberada.'];
  }
  private function fall(int $actor,array $input):array {
   if(!empty($input['assignment_id'])){$row=$this->assignment($actor,$input);$accountId=(int)$row['account_id'];$revision=(int)($input['account_revision']??0);}
   else{$this->admin($actor);$accountId=Rules::id($input['account_id']??null);$revision=(int)($input['account_revision']??0);}
   $account=$this->db->execute_query('SELECT revision,state FROM fm_service_accounts WHERE id=? FOR UPDATE',[$accountId])->fetch_assoc();if(!$account)throw new HttpException(404,'Cuenta no disponible.');if((int)$account['revision']!==$revision||$account['state']!=='enabled')throw new HttpException(409,'El estado de la cuenta cambió.');
   $reason=Rules::text($input['reason']??'',500,false);
+  $sellers=array_map('intval',array_column($this->db->execute_query('SELECT DISTINCT a.advisor_id FROM fm_service_profiles p JOIN fm_service_assignments a ON a.id=p.current_assignment_id WHERE p.account_id=?',[$accountId])->fetch_all(MYSQLI_ASSOC),'advisor_id'));
   $this->db->execute_query("UPDATE fm_service_accounts SET state='fallen',fallen_reason=?,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?",[$reason,$accountId]);
   $this->db->execute_query("UPDATE fm_service_assignments a JOIN fm_service_profiles p ON p.current_assignment_id=a.id SET a.closed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),a.close_reason='fallen',a.revision=a.revision+1 WHERE p.account_id=?",[$accountId]);
-  $this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=NULL WHERE account_id=?',[$accountId]);$this->audit($actor,'fall',$accountId);return ['message'=>'Cuenta marcada como caída. Queda fuera de disponibles.'];
+  $this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=NULL WHERE account_id=?',[$accountId]);$this->audit($actor,'fall',$accountId,['seller_ids'=>$sellers]);return ['message'=>'Cuenta marcada como caída. Queda fuera de disponibles.'];
  }
  private function rehabilitate(int $actor,array $input):array {
   $this->admin($actor);$id=Rules::id($input['account_id']??null);$row=$this->db->execute_query('SELECT revision,state FROM fm_service_accounts WHERE id=? FOR UPDATE',[$id])->fetch_assoc();if(!$row)throw new HttpException(404,'Cuenta no disponible.');if((int)$row['revision']!==(int)($input['account_revision']??0)||$row['state']!=='fallen')throw new HttpException(409,'El estado de la cuenta cambió.');
@@ -232,12 +236,11 @@ final class SpotifyRepository {
   $rows=$this->db->execute_query("SELECT c.state,EXISTS(SELECT 1 FROM fm_service_profiles p WHERE p.account_id=c.id AND p.current_assignment_id IS NOT NULL) assigned FROM fm_service_accounts c WHERE ".$scope,$args)->fetch_all(MYSQLI_ASSOC);
   foreach($rows as $r)$counts[$r['state']==='fallen'?'fallen':($r['assigned']?'assigned':'free')]++;
   $payments=['current'=>0,'soon'=>0,'expired'=>0];$renewals=$payments;
-  $sql=$who['admin']?'SELECT next_payment FROM fm_service_mains':'SELECT DISTINCT m.id,m.next_payment FROM fm_service_mains m JOIN fm_service_accounts c ON c.main_id=m.id WHERE '.$scope;
-  foreach($this->db->execute_query($sql,$who['admin']?[]:$args)->fetch_all(MYSQLI_ASSOC) as $r){$days=Rules::days($r['next_payment']);$payments[$days<0?'expired':($days<=3?'soon':'current')]++;}
+  if($who['admin'])foreach($this->db->query('SELECT next_payment FROM fm_service_mains')->fetch_all(MYSQLI_ASSOC) as $r){$days=Rules::days($r['next_payment']);$payments[$days<0?'expired':($days<=3?'soon':'current')]++;}
   $sql='SELECT a.end_date FROM fm_service_assignments a JOIN fm_service_profiles p ON p.current_assignment_id=a.id WHERE a.closed_at IS NULL';$params=[];
   if(!$who['admin']){$sql.=' AND a.advisor_id=?';$params=[$actor];}
   foreach($this->db->execute_query($sql,$params)->fetch_all(MYSQLI_ASSOC) as $r){$days=Rules::days($r['end_date']);$renewals[$days<0?'expired':($days<=3?'soon':'current')]++;}
-  return ['admin'=>$who['admin'],'payments'=>$payments,'renewals'=>$renewals,'accounts'=>$counts];
+  return ['admin'=>$who['admin'],'payments'=>$who['admin']?$payments:null,'renewals'=>$renewals,'accounts'=>$counts];
  }
  public function metadata(int $actor):array {
   $who=$this->actor($actor);$types=$this->db->query('SELECT id,name,max_accounts,max_profiles FROM fm_service_types WHERE active=1 ORDER BY name')->fetch_all(MYSQLI_ASSOC);

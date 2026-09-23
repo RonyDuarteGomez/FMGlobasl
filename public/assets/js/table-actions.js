@@ -1,6 +1,17 @@
+// Un solo tooltip visible, sin conservar el hover al cambiar de botón.
+window.fmTableTooltip=function(wrap,description){
+ const tooltip=new bootstrap.Tooltip(wrap,{title:description,container:'body',trigger:'manual',placement:'top',animation:false});
+ const show=()=>{document.querySelectorAll('.fm-table-icon-wrap,[data-spotify-tip]').forEach(el=>{if(el!==wrap)bootstrap.Tooltip.getInstance(el)?.hide();});tooltip.show();};
+ const hide=()=>tooltip.hide();
+ wrap.addEventListener('mouseenter',show);wrap.addEventListener('mouseleave',hide);
+ wrap.addEventListener('focusin',show);wrap.addEventListener('focusout',hide);wrap.addEventListener('click',hide);
+ return tooltip;
+};
+document.addEventListener('show.bs.modal',()=>document.querySelectorAll('.fm-table-icon-wrap,[data-spotify-tip]').forEach(el=>bootstrap.Tooltip.getInstance(el)?.hide()));
 // Presentación compartida: únicamente acciones dentro de estas tablas.
 (() => {
  const rules=[
+  ['#clientsTable [data-client-edit]','fa-pen','Editar'],
   ['#usuariosTable .btn-edit','fa-pen','Editar'],
   ['#usuariosTable .btn-delete','fa-user-slash','Inactivar'],
   ['#usuariosTable .btn-activate','fa-user-check','Activar'],
@@ -24,8 +35,7 @@
    const i=document.createElement('i');i.className='fas '+icon;i.setAttribute('aria-hidden','true');button.replaceChildren(i);
    const wrap=document.createElement('span');wrap.className='fm-table-icon-wrap';wrap.tabIndex=button.disabled?0:-1;wrap.setAttribute('aria-label',description);
    button.replaceWith(wrap);wrap.append(button);
-   const tooltip=new bootstrap.Tooltip(wrap,{title:description,container:'body',trigger:'hover focus',placement:'top'});
-   button.addEventListener('focus',()=>tooltip.show());button.addEventListener('blur',()=>tooltip.hide());button.addEventListener('click',()=>tooltip.hide());
+   const tooltip=window.fmTableTooltip(wrap,description);
    active.set(button,{wrap,tooltip});
   });
  }

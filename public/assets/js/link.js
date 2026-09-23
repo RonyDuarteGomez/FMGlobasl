@@ -4,7 +4,8 @@ function iniciarLink() {
  const $=id=>root.querySelector('#'+id), form=$('linkAccountForm'), modalElement=$('linkAccountModal');
  const modal=bootstrap.Modal.getOrCreateInstance(modalElement);
  let rows=[], users=[], page=1, mode='', busy=false, preview=null, fixed=null, report=null, sequence=0, availabilitySequence=0;
- const notice=(text,error=false)=>{ $('linkNotice').textContent=text; $('linkNotice').className='alert '+(error?'alert-danger':'alert-success'); $('linkNotice').hidden=!text; };
+ let noticeTimer;
+ const notice=(text,error=false)=>{ clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>{$('linkNotice').hidden=true;},12000); $('linkNotice').textContent=text; $('linkNotice').className='alert '+(error?'alert-danger':'alert-success'); $('linkNotice').hidden=!text; };
  const fail=e=>{$('linkModalError').textContent=e.message;$('linkModalError').hidden=false;};
  function setBusy(value){busy=value;$('linkBusy').hidden=!value;form.querySelectorAll('button').forEach(b=>b.disabled=value);modalElement.querySelector('.btn-close').disabled=value;form.querySelectorAll('input,select,textarea').forEach(e=>e.disabled=value);if(!value && mode==='move')moveFields();}
  modalElement.addEventListener('hide.bs.modal',event=>{if(busy)event.preventDefault();});

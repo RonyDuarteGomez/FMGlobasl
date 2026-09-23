@@ -1,9 +1,10 @@
 <?php
 $charts=[['Pagos',$spotifySummary['payments'],['current'=>'Al día','soon'=>'Por vencer','expired'=>'Vencidos'],['--bs-success','--bs-warning','--bs-danger'],'pagos'],['Renovaciones',$spotifySummary['renewals'],['current'=>'Al día','soon'=>'Por vencer','expired'=>'Vencidas'],['--bs-success','--bs-warning','--bs-danger'],'renovaciones'],['Cuentas',$spotifySummary['accounts'],['assigned'=>'Asignadas','free'=>'Libres','fallen'=>'Caídas'],['--color-primario','--bs-success','--bs-danger'],'cuentas']];
+if(!$spotifySummary['admin'])array_shift($charts);
 ?>
 <article class="dashboard-card card card-outline card-primary spotify-dashboard-card">
 <div class="dashboard-card-heading"><h3>Spotify</h3></div>
-<div class="spotify-dashboard-charts">
+<div class="spotify-dashboard-charts<?= $spotifySummary['admin']?'':' spotify-dashboard-charts-personal' ?>">
 <?php foreach($charts as [$title,$values,$labels,$colors,$unit]): $total=array_sum($values);$offset=0; ?>
 <div class="spotify-chart-block"><div class="account-chart">
 <svg class="platform-donut" viewBox="0 0 120 120" role="img" aria-label="<?= $escape($title.': '.implode(', ',array_map(fn($key)=>$labels[$key].' '.$values[$key],array_keys($labels)))) ?>">

@@ -5,7 +5,8 @@ function iniciarActivacion() {
   const status = document.getElementById('scheduleStatus');
   const template = document.getElementById('scheduleSlotTemplate');
   let saving = false;
-  const dirty = () => { status.classList.remove('text-danger','text-success'); status.textContent = 'Cambios pendientes de guardar.'; };
+  let statusTimer;
+  const dirty = () => {clearTimeout(statusTimer); status.classList.remove('text-danger','text-success'); status.textContent = 'Cambios pendientes de guardar.'; };
   const slots = row => [...row.querySelectorAll('.schedule-slot')].map(slot => ({start: slot.querySelector('[data-start]').value, end: slot.querySelector('[data-end]').value}));
   const appendSlot = (row, range = {start:'09:00',end:'18:00'}) => {
     const node = template.content.firstElementChild.cloneNode(true);
@@ -82,7 +83,7 @@ function iniciarActivacion() {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'No se pudo guardar la programación.');
       form.dataset.revision = result.revision;
-      status.classList.add('text-success');status.textContent = result.message;
+      status.classList.add('text-success');status.textContent = result.message;clearTimeout(statusTimer);statusTimer=setTimeout(()=>{status.textContent='';status.classList.remove('text-success');},12000);
       const live = document.getElementById('scheduleLive');
       live.classList.toggle('text-bg-success',result.active);live.classList.toggle('text-bg-danger',!result.active);live.textContent = result.active?'Activo':'Inactivo';
     } catch (error) { status.classList.add('text-danger');status.textContent = error.message; }

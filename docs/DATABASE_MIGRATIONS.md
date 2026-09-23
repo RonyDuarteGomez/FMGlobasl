@@ -96,4 +96,8 @@ No reabrir una versión antigua que escriba consultas sin ID después de complet
 
 El ejecutor incluye `migrate-spotify.php` después de preparar la clave de cifrado. En local puede ejecutarse individualmente. Usa `config/links.key` para las contraseñas; conservarla aunque no existan cuentas Link Netflix. El diagnóstico y la preparación de clave revisan también la existencia de cuentas Spotify antes de permitir generar una nueva.
 
-La migración crea tablas sin cargar inventario de prueba ni cambiar usuarios existentes. CSV, dashboard, reportes y mantenimientos independientes de clientes y tipos de servicio no forman parte de esta entrega.
+La migración crea tablas sin cargar inventario de prueba ni cambiar usuarios existentes. Incluye CSV, dashboard y ahora Clientes y Ventas Spotify. Tipos de servicio y reporte detallado de servicios del cliente siguen pendientes.
+
+## Clientes y Ventas Spotify
+
+`migrate-spotify.php` crea además `fm_client_audit` y `fm_spotify_sales_events` y reconstruye el historial respaldado por auditoría existente. Incluido en `migrate-all.php`; ejecutar con escrituras detenidas, respaldo y validación como el resto de los pasos. No hay borrados. Los permisos nuevos se conceden inicialmente al perfil administrador, pero son revocables incluso para admin. Ver [reglas y límites del histórico](CLIENTS_AND_SPOTIFY_SALES.md).

@@ -6,6 +6,7 @@ final class Navigation
         'Gestión'=>[
             ['Link','Link Netflix','soporte/link.php','services.links','iniciarLink'],
             ['Spotify','Spotify','gestion/spotify.php','services.spotify','iniciarSpotify'],
+            ['Clientes','Clientes','gestion/clientes.php','clients.manage','iniciarClientes'],
         ],
         'Servicios'=>[
             ['Activacion','Soporte clientes','activacion/activacion.php','services.activation','iniciarActivacion'],
@@ -18,6 +19,7 @@ final class Navigation
             ['menuPermisos','Permisos','permisos/index.php','permissions.manage',''],
         ],
         'Reportes'=>[
+            ['VentasSpotify','Ventas Spotify','reportes/ventas-spotify.php','reports.spotify_sales','iniciarVentasSpotify'],
             ['reportePublico','Consultas clientes','inicio.php','reports.public',''],
             ['reportesMenu','Consultas asesores','dashboard.php?report=advisor','reports.internal',''],
             ['reporteSoporte','Consultas soporte','dashboard.php?report=support','reports.support',''],

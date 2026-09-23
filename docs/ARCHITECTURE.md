@@ -82,7 +82,7 @@ existe un consumidor externo, hay que coordinarlo antes de desplegar.
 
 La gestión de accesos ahora se guarda por perfil y por usuario en la base de datos. Las reglas fijas descritas anteriormente se conservan como configuración inicial, no como autorización permanente. Esta entrega agrega una migración de tablas de permisos que debe ejecutarse antes de desplegar; reemplaza la indicación anterior de que no había cambios de esquema. Consulte [Permisos y dashboard](PERMISSIONS_AND_DASHBOARD.md) para uso, alcance, migración y pruebas.
 
-La cuenta reservada de superusuario (id 1, usuario admin) dispone de todos los permisos del catálogo, independientemente del perfil o las excepciones. No aparece en el selector de permisos por usuario y se rechazan cambios directos a sus permisos. Los demás administradores siguen las reglas configuradas en base de datos.
+Todos los usuarios, incluida la cuenta técnica admin, acceden según permisos de perfil y excepciones por usuario. El perfil administrador solo determina el alcance global dentro de los módulos autorizados. La cuenta técnica sigue excluida de asignaciones operativas. Siempre debe quedar un gestor de permisos activo.
 
 
 ## Sesión por inactividad
