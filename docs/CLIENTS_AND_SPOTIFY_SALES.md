@@ -37,3 +37,16 @@ La migración de permisos `006_clients_sales` conserva cambios posteriores. El b
 ## Importación de Clientes
 
 Botón Importar CSV y descarga del modelo dentro del modal, con columnas `nombre,celular`. UTF-8, coma o punto y coma, hasta 2 MB y 500 filas. Se guardan las filas válidas con auditoría, sin sobrescribir clientes; los rechazos muestran registro, datos originales y motivo. Requiere `clients.manage` y CSRF.
+
+
+## Información del cliente
+
+Acción Información en la tabla Clientes. Requiere `clients.manage`, incluso para administradores. El administrador consulta todas las asignaciones asociadas al celular del cliente; otros usuarios solo las asignaciones cuyo `advisor_id` coincide con su sesión. Los parámetros del navegador no permiten ampliar ese alcance.
+
+El modal muestra nombre/celular y una tabla paginada de diez servicios: servicio, correo secundario, beneficiario, inicio, próximo pago del cliente (fecha `end_date` de la asignación), días por vencer, estado y fecha de liberación. No consulta ni devuelve contraseñas, correo principal, correo de pago del proveedor ni fechas del proveedor. No representa cobros realizados: es el vencimiento del servicio del cliente.
+
+Estados: Liberado si la asignación está cerrada; Caído si la cuenta actual está caída; Vencido si la fecha final es anterior al día actual en Lima; Activo en otro caso. Para liberados se muestran fecha final histórica y liberación, sin contar días restantes.
+
+Se utiliza el historial de asignaciones existente. Correo y beneficiario proceden de sus registros asociados actuales; no se inventan versiones antiguas del correo si se cambió. Cambiar el cliente o asesor de una asignación modifica la asociación consultada; el historial de movimientos sigue en auditoría. Las asignaciones sin cliente no aparecen en esta ficha.
+
+Validación: 49 comprobaciones Clientes/Ventas, 298 de integración y recorrido de interfaz Chrome con servicio activo y liberado.

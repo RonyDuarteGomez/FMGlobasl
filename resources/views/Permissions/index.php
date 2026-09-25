@@ -1,6 +1,7 @@
 <?php $escape=fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES,'UTF-8'); ?>
 <section class="permissions-page">
-<div class="module-heading"><h2>Permisos</h2><span class="module-category">Mantenimiento</span></div>
+<div class="module-heading"><h2>Permisos usuarios</h2><span class="module-category">Mantenimiento</span></div>
+<div class="mb-2"><button type="button" class="btn btn-sm btn-outline-primary" data-load-url="permisos/index.php?view=alternative&amp;type=role">Comparar nuevo diseño</button></div>
 <form class="filtros permission-filters" data-module-filter="permisos/index.php">
 <select class="form-select form-select-sm" name="type" aria-label="Definir permisos por"><option value="role" <?= $type==='role'?'selected':'' ?>>Definir permiso por perfil</option><option value="user" <?= $type==='user'?'selected':'' ?>>Definir permiso por usuario</option></select>
 <select class="form-select form-select-sm" name="id" aria-label="<?= $type==='user'?'Usuario':'Perfil' ?>"><?php foreach($targets as $target): ?><option value="<?= (int)$target['id'] ?>" <?= (int)$target['id']===$id?'selected':'' ?>><?= $escape($target['label']) ?></option><?php endforeach ?></select>

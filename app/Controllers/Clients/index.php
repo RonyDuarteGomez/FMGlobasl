@@ -16,5 +16,5 @@ if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['action']??'')==='import'){
 if($_SERVER['REQUEST_METHOD']==='POST'){
  try{$input=json_decode($_POST['payload']??'',true,32,JSON_THROW_ON_ERROR);}catch(\Throwable $e){throw new HttpException(422,'Solicitud no válida.');}
  if(!is_array($input))throw new HttpException(422,'Solicitud no válida.');$result=$repo->save($actor,$input);
-}else{if(($_GET['action']??'')!=='list')throw new HttpException(422,'Acción no válida.');$result=$repo->listing($actor,$_GET);}
+}else{$result=match($_GET['action']??''){'list'=>$repo->listing($actor,$_GET),'information'=>$repo->information($actor,$_GET),default=>throw new HttpException(422,'Acción no válida.')};}
 echo json_encode(['ok'=>true]+$result,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);

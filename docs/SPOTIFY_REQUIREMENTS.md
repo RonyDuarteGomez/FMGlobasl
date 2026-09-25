@@ -1,3 +1,7 @@
+# Reglas vigentes
+
+Los cambios de [septiembre 2026](CHANGES_2026_09.md) sustituyen las reglas anteriores sobre cliente obligatorio, meses, caídas y reasignación. Pagos del dashboard es exclusivo del administrador.
+
 # Spotify: requerimientos y casos de uso
 
 Estado: módulo operativo inicial implementado en local. Carga CSV implementada (sección 13). Dashboard, reportes y mantenimientos de Clientes/Tipos de servicio quedan aplazados por indicación del usuario. Los apartados de propuesta conservan el contexto de diseño; ver alcance implementado al final.
@@ -41,7 +45,7 @@ flowchart LR
 
 Reglas de integridad:
 
-- Cada secundaria pertenece a una sola principal y su correo no se duplica.
+- Cada registro de secundaria pertenece a un grupo principal/pago. Su correo puede repetirse en otro grupo; la combinación correo de pago + correo principal + correo secundario es única.
 - Se mantiene la relación de varios perfiles aunque Spotify admita uno actualmente.
 - Cada perfil admite como máximo una asignación vigente, con un cliente y un asesor. Un cliente puede contratar varios perfiles.
 - El celular se normaliza con prefijo internacional; no asumir Perú ni otro país cuando falte ese dato. Una corrección del celular debe conservar relaciones e historial.
@@ -341,3 +345,18 @@ Tarjeta de ancho completo, visible con permiso `services.spotify`, con aros de P
 Administrador ve todos los datos. Operativo ve sus asignaciones actuales y cuentas caídas cuya última asignación de perfil le pertenecía; no ve inventario libre global. Pagos agrega únicamente principales vinculadas a esas cuentas, sin revelar correos o fechas del proveedor. Al habilitar/reasignar una caída deja de formar parte de ese alcance histórico. El aviso superior «Spotify necesita atención» y el aviso amarillo del módulo por caídas son exclusivos del administrador.
 
 En Habilitar cuenta se muestra «Reportado por» con el nombre del actor de la última acción `fall` de `fm_service_audit`, conservado por ID incluso al liberar la asignación. Las cuentas importadas como caídas sin reporte se muestran como «Sin registro». No requiere migración adicional.
+
+
+### Pagos de proveedor: meses configurables (24/09/2026)
+El pago individual y masivo permite de 1 a 120 meses enteros, con 1 por defecto. Se suman a la fecha de próximo pago registrada de cada cuenta, ajustando al último día del mes cuando corresponde. En bloque se aplica la misma cantidad a todas las cuentas seleccionadas, con vista previa individual. Se mantienen autorización administrativa, control de revisión, idempotencia y transacción del bloque. La auditoría registra los meses y las fechas anterior y nueva; no requiere cambio de esquema.
+
+
+### Identidad de cuentas Spotify — 24/09/2026
+La unicidad funcional es correo principal + correo de pago + correo secundario (dentro del servicio). Sustituye la exclusividad global anterior del correo secundario. Se conservan IDs numéricos, asignaciones e historial. El grupo principal es único por servicio/principal/pago y la secundaria por grupo/correo. Las bajas lógicas también conservan su identidad.
+
+Migración `010_spotify_account_identity`: `SpotifyMigration::apply` la incluye, por lo que `bin/migrate-all.php --apply` la ejecuta. Para una instalación ya actualizada: `php bin/migrate-spotify-identity.php` (en producción agregar `--allow-deployment`, con respaldo y tráfico suspendido). Agrega los índices compuestos antes de quitar los anteriores; puede repetirse y no elimina registros. No volver al código anterior sin revisar los datos permitidos por la nueva regla.
+
+Registro manual y CSV reutilizan un grupo existente para agregar nuevas secundarias; su fecha de pago debe coincidir. Repetir los tres correos se rechaza aunque cambien contraseña o perfil. Los correos se normalizan a minúsculas y sin espacios exteriores. El CSV importa filas válidas y permite descargar las rechazadas con sus columnas originales, número de fila, motivo y datos originales. Encabezados inválidos siguen rechazando el archivo completo. Los datos originales del rechazo se devuelven al importador, sin guardarlos en claro en el historial de comandos.
+
+
+Regla de identidad confirmada por el usuario: la combinación de los tres correos es única; no se exige exclusividad individual de cada correo. Se mantiene la clave primaria numérica para las relaciones e historial. Registro manual y CSV ya implementan esta regla; 125 comprobaciones de Spotify correctas en base temporal.

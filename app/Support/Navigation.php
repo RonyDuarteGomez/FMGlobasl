@@ -13,10 +13,12 @@ final class Navigation
             ['Autoriza','Autorizar Gmail','mantenimiento_gmail.php','services.gmail',''],
             ['asesorMenu','Asesor','soporte/asesor.php','services.advisor','iniciarAsesor'],
             ['soporteMenu','Soporte','soporte/soporte.php','services.support','iniciarSoporte'],
+            ['GeneradorExterno','Generador de Link','servicios/generador.php','services.external_links','iniciarExterno'],
         ],
         'Mantenimiento'=>[
             ['menuUsuarios','Usuarios','usuario/usuarios.php','users.manage','iniciarUsuarios'],
-            ['menuPermisos','Permisos','permisos/index.php','permissions.manage',''],
+            ['menuPermisos','Permisos usuarios','permisos/index.php','permissions.manage',''],
+            ['RestriccionesExterno','Permisos de Generador de Link','mantenimiento/restricciones-generador.php','external.restrictions','iniciarExterno'],
         ],
         'Reportes'=>[
             ['VentasSpotify','Ventas Spotify','reportes/ventas-spotify.php','reports.spotify_sales','iniciarVentasSpotify'],
@@ -24,6 +26,7 @@ final class Navigation
             ['reportesMenu','Consultas asesores','dashboard.php?report=advisor','reports.internal',''],
             ['reporteSoporte','Consultas soporte','dashboard.php?report=support','reports.support',''],
             ['reporteLinks','Consultas link','dashboard.php?report=links','reports.links',''],
+            ['ReporteExterno','Generador de Link','reportes/links-externos.php','reports.external_links','iniciarExterno'],
         ],
     ];
     public static function label(string $id): string

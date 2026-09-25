@@ -1,8 +1,8 @@
 // Un solo tooltip visible, sin conservar el hover al cambiar de botón.
 window.fmTableTooltip=function(wrap,description){
  const tooltip=new bootstrap.Tooltip(wrap,{title:description,container:'body',trigger:'manual',placement:'top',animation:false});
- const show=()=>{document.querySelectorAll('.fm-table-icon-wrap,[data-spotify-tip]').forEach(el=>{if(el!==wrap)bootstrap.Tooltip.getInstance(el)?.hide();});tooltip.show();};
- const hide=()=>tooltip.hide();
+ const show=()=>{document.querySelectorAll('.fm-table-icon-wrap,[data-spotify-tip]').forEach(el=>{if(el!==wrap)bootstrap.Tooltip.getInstance(el)?.hide();});bootstrap.Tooltip.getInstance(wrap)?.show();};
+ const hide=()=>bootstrap.Tooltip.getInstance(wrap)?.hide();
  wrap.addEventListener('mouseenter',show);wrap.addEventListener('mouseleave',hide);
  wrap.addEventListener('focusin',show);wrap.addEventListener('focusout',hide);wrap.addEventListener('click',hide);
  return tooltip;
@@ -11,6 +11,7 @@ document.addEventListener('show.bs.modal',()=>document.querySelectorAll('.fm-tab
 // Presentación compartida: únicamente acciones dentro de estas tablas.
 (() => {
  const rules=[
+  ['#clientsTable [data-client-info]','fa-circle-info','Información'],
   ['#clientsTable [data-client-edit]','fa-pen','Editar'],
   ['#usuariosTable .btn-edit','fa-pen','Editar'],
   ['#usuariosTable .btn-delete','fa-user-slash','Inactivar'],
@@ -27,7 +28,7 @@ document.addEventListener('show.bs.modal',()=>document.querySelectorAll('.fm-tab
  const active=new Map();let queued=false;
  function sync(){
   queued=false;if(!window.bootstrap?.Tooltip)return;
-  for(const [button,entry] of active)if(!button.isConnected){entry.tooltip.dispose();active.delete(button);}
+  for(const [button,entry] of active)if(!button.isConnected){active.delete(button);bootstrap.Tooltip.getInstance(entry.wrap)?.dispose();}
   for(const [selector,icon,label] of rules)document.querySelectorAll(selector).forEach(button=>{
    if(active.has(button)){const wrap=active.get(button).wrap;wrap.tabIndex=button.disabled?0:-1;return;}
    const description=button.title||label;button.removeAttribute('title');button.classList.add('fm-table-icon');

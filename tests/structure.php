@@ -8,7 +8,7 @@ function verifyStructure(bool $condition, string $label): void {
     $count++;
 }
 $routes = require FM_ROOT . '/routes/web.php';
-verifyStructure(count($routes) === 34, 'Conservar rutas existentes y añadir Clientes y Ventas Spotify');
+verifyStructure(count($routes) === 37, 'Conservar rutas existentes y añadir Clientes y Ventas Spotify');
 foreach ($routes as $url => $controller) {
     verifyStructure(is_file(FM_ROOT . '/public/' . $url), 'Entrada publica: ' . $url);
     verifyStructure(is_file(FM_ROOT . '/' . $controller), 'Controlador: ' . $url);

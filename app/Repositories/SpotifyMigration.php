@@ -17,5 +17,7 @@ final class SpotifyMigration
   ] as $sql)$db->query($sql);
   $db->query("INSERT IGNORE INTO fm_service_types(code,name,max_accounts,max_profiles) VALUES('spotify','Spotify',5,1)");
   SpotifySalesMigration::apply($db);
+  SpotifyEvolutionMigration::apply($db);
+  SpotifyIdentityMigration::apply($db);
  }
 }

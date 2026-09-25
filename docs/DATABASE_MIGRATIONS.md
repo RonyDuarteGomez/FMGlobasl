@@ -101,3 +101,15 @@ La migración crea tablas sin cargar inventario de prueba ni cambiar usuarios ex
 ## Clientes y Ventas Spotify
 
 `migrate-spotify.php` crea además `fm_client_audit` y `fm_spotify_sales_events` y reconstruye el historial respaldado por auditoría existente. Incluido en `migrate-all.php`; ejecutar con escrituras detenidas, respaldo y validación como el resto de los pasos. No hay borrados. Los permisos nuevos se conceden inicialmente al perfil administrador, pero son revocables incluso para admin. Ver [reglas y límites del histórico](CLIENTS_AND_SPOTIFY_SALES.md).
+
+## Septiembre: evolución Spotify y externos
+
+`migrate-spotify.php` incorpora `008_spotify_evolution`; `migrate-external.php` incorpora `009_external_links`. Ambos incluidos en `migrate-all.php`. Detalles y recuperación limitada de caídas en [CHANGES_2026_09.md](CHANGES_2026_09.md).
+
+
+### Identidad de cuentas Spotify — 24/09/2026
+La unicidad funcional es correo principal + correo de pago + correo secundario (dentro del servicio). Sustituye la exclusividad global anterior del correo secundario. Se conservan IDs numéricos, asignaciones e historial. El grupo principal es único por servicio/principal/pago y la secundaria por grupo/correo. Las bajas lógicas también conservan su identidad.
+
+Migración `010_spotify_account_identity`: `SpotifyMigration::apply` la incluye, por lo que `bin/migrate-all.php --apply` la ejecuta. Para una instalación ya actualizada: `php bin/migrate-spotify-identity.php` (en producción agregar `--allow-deployment`, con respaldo y tráfico suspendido). Agrega los índices compuestos antes de quitar los anteriores; puede repetirse y no elimina registros. No volver al código anterior sin revisar los datos permitidos por la nueva regla.
+
+Registro manual y CSV reutilizan un grupo existente para agregar nuevas secundarias; su fecha de pago debe coincidir. Repetir los tres correos se rechaza aunque cambien contraseña o perfil. Los correos se normalizan a minúsculas y sin espacios exteriores. El CSV importa filas válidas y permite descargar las rechazadas con sus columnas originales, número de fila, motivo y datos originales. Encabezados inválidos siguen rechazando el archivo completo. Los datos originales del rechazo se devuelven al importador, sin guardarlos en claro en el historial de comandos.

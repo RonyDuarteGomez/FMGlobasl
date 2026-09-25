@@ -67,6 +67,12 @@ final class ActivityRepository
         $row=$this->db->execute_query("SELECT COALESCE(SUM(streaming IN (1,3,5)),0) AS netflix, COALESCE(SUM(streaming IN (2,4)),0) AS disney FROM (SELECT log.*,COALESCE((SELECT NULLIF(TRIM(CONCAT_WS(' ',p.nombre,p.apellido_paterno,p.apellido_materno)),'') FROM usuarios u INNER JOIN personal p ON p.usuario_id=u.id WHERE u.id=log.usuario_id LIMIT 1),log.usuario) display_name FROM uso_servicio log) activity WHERE $where",$args)->fetch_assoc();
         return array_map('intval',$row);
     }
+    public function advisorBreakdown(?int $user): array
+    {
+        [$where,$args]=$this->filter([3,4,5],$user,30);
+        $row=$this->db->execute_query("SELECT COALESCE(SUM(streaming=3),0) AS netflix_access, COALESCE(SUM(streaming=5),0) AS netflix_login, COALESCE(SUM(streaming=4),0) AS disney FROM uso_servicio WHERE $where",$args)->fetch_assoc();
+        return array_map('intval',$row);
+    }
     public function users(): array { return $this->db->query('SELECT SUM(estado=1) AS active,SUM(estado<>1) AS inactive FROM usuarios')->fetch_assoc(); }
     public function gmail(): int { return (int)$this->db->query('SELECT COUNT(*) AS total FROM gmail_tokens WHERE activa=1')->fetch_assoc()['total']; }
     public function publicAvailability(): bool { return \FMGlobal\Services\Schedules\WeeklySchedule::active((new PublicScheduleRepository($this->db))->load()['week']); }

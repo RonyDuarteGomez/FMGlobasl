@@ -52,6 +52,27 @@ final class WeeklySchedule
         }
         return $week;
     }
+    /** Seconds until the current continuous opening ends; null means open all week. */
+    public static function remainingSeconds(array $week, \DateTimeImmutable $now): ?int
+    {
+        $now=$now->setTimezone(new \DateTimeZone('America/Lima'));
+        if(!self::active($week,$now))return 0;
+        $end=$now->getTimestamp();
+        for($offset=0;$offset<=7;$offset++){
+            $date=$now->setTime(0,0)->modify('+'.$offset.' days');
+            $day=$week[(int)$date->format('N')];
+            $slots=$day['mode']==='all'?[['start'=>'00:00','end'=>'24:00']]:($day['mode']==='hours'?$day['slots']:[]);
+            foreach($slots as $slot){
+                $start=$date->getTimestamp()+self::minute($slot['start'])*60;
+                $stop=$date->getTimestamp()+self::minute($slot['end'],true)*60;
+                if($stop<=$end)continue;
+                if($start>$end)return $end-$now->getTimestamp();
+                $end=$stop;
+            }
+            if($end<$date->modify('+1 day')->getTimestamp())return $end-$now->getTimestamp();
+        }
+        return null;
+    }
     public static function active(array $week,?\DateTimeImmutable $now=null): bool
     {
         $now=($now??new \DateTimeImmutable('now'))->setTimezone(new \DateTimeZone('America/Lima'));

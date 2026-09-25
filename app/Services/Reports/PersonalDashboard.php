@@ -22,6 +22,7 @@ final class PersonalDashboard
                 $card['summary']=$this->activity->summary($operations,$user);
                 if ($mix) $card['mix']=$this->activity->platforms($operations,$user);
                 else $card['series']=$this->activity->daily($operations,$user);
+                if ($destination==='asesorMenu') $card['breakdown']=$this->activity->advisorBreakdown($user);
             }
             $cards[]=$card;
         }

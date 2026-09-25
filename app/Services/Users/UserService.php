@@ -10,8 +10,12 @@ final class UserService
     public function save(array $input, string $actor, int $actorId): int
     {
         $id=isset($input['usuario_id']) && $input['usuario_id']!==''?Input::id($input,'usuario_id'):null;
+        $this->authorizeTarget($id,$actorId);
         $old=$id?$this->users->details($id):null;
         if ($id && !$old) throw new HttpException(404,'Usuario no encontrado.');
+        foreach(['usuario'=>'El usuario','clave'=>'La contraseña','telefono'=>'El teléfono'] as $field=>$label){
+            if(array_key_exists($field,$input)&&is_string($input[$field])&&preg_match('/[\s\p{Z}]/u',$input[$field]))throw new HttpException(422,$label.' no debe contener espacios en blanco.');
+        }
         $data=[];
         foreach(['nombre'=>100,'apellido_paterno'=>100,'apellido_materno'=>100,'correo'=>100,'telefono'=>20,'celular'=>20,'cargo'=>50] as $key=>$max) {
             // Los campos ausentes no borran datos guardados por otra pantalla.
@@ -22,7 +26,6 @@ final class UserService
         Input::email($data,'correo',false);
         $data['rol_id']=Input::id($input,'rol');
         if (!$this->users->roleExists($data['rol_id'])) throw new HttpException(422,'Rol no válido.');
-        $this->authorizeTarget($id,$actorId);
         if ((!$id || (int)$old['rol_id']!==$data['rol_id']) && $actorId!==0 && empty($this->users->permissions($actorId)['permissions.manage'])) throw new HttpException(403,'Asignar perfiles requiere permiso para administrar permisos.');
         $password=Input::text($input,'clave',72,false,false);
         if (strlen($password)>72) throw new HttpException(422,'La contraseña supera los 72 bytes permitidos.');

@@ -23,7 +23,7 @@ function token(string $body):string{if(!preg_match('/name="_csrf" value="([a-f0-
 function browser(){global $clients;$c=curl_init();curl_setopt($c,CURLOPT_COOKIEFILE,'');$clients[]=$c;return $c;}
 function login($client,string $name):string{
  $page=http($client,'login.php');$before=curl_getinfo($client,CURLINFO_COOKIELIST);
- $r=http($client,'login.php','POST',['usuario'=>$name,'clave'=>'Prueba temporal 123!','_csrf'=>token($page['body'])]);
+ $r=http($client,'login.php','POST',['usuario'=>$name,'clave'=>'PruebaTemporal123!','_csrf'=>token($page['body'])]);
  verify($r['status']===302,'Login: '.$name);verify($before!==curl_getinfo($client,CURLINFO_COOKIELIST),'Regenerar sesión: '.$name);
  $home=http($client,'home.php');verify($home['status']===200,'Panel: '.$name);
  preg_match('/name="csrf-token" content="([a-f0-9]+)"/',$home['body'],$m);return $m[1];
@@ -36,6 +36,7 @@ try{
  \FMGlobal\Repositories\PermissionMigration::apply($db);
  \FMGlobal\Repositories\LinkAccountMigration::apply($db);
  \FMGlobal\Repositories\SpotifyMigration::apply($db);
+ \FMGlobal\Repositories\ExternalLinkMigration::apply($db);
  \FMGlobal\Repositories\GmailMigration::apply($db);
  \FMGlobal\Repositories\GmailMigration::apply($db);
  $gmail=new \FMGlobal\Repositories\GmailTokenRepository($db);
@@ -58,7 +59,7 @@ try{
  verify($gmail->find('empty@example.test')===null,'Token vacio no permite consultar');
  verify(!array_key_exists('refresh_token',$gmail->listAuthorized()->fetch_assoc()),'Listado no expone tokens');
  $users=new UserRepository($db);$schedules=new ScheduleRepository($db);$service=new UserService($users,$schedules);
- $seed=fn($name,$role)=>['usuario'=>$name,'nombre'=>'Prueba','apellido_paterno'=>'Prueba','rol'=>(string)$role,'clave'=>'Prueba temporal 123!'];
+ $seed=fn($name,$role)=>['usuario'=>$name,'nombre'=>'Prueba','apellido_paterno'=>'Prueba','rol'=>(string)$role,'clave'=>'PruebaTemporal123!'];
  $adminId=$service->save($seed('test_admin',1),'test_admin',0);
  $advisorId=$service->save($seed('test_asesor',2),'test_admin',$adminId);
  $supportId=$service->save($seed('test_soporte',3),'test_admin',$adminId);
@@ -71,6 +72,21 @@ try{
  verify($schedules->forUser($id)[0]['hora_inicio']==='09:00:00','Editar usuario conserva horarios existentes');
  verify($users->details($id)['nombre']==='Editado','Edición modifica datos personales');
  try{$service->save($seed('test_edit',2),'test_admin',$adminId);throw new RuntimeException('No rechazó duplicado');}catch(\FMGlobal\Http\HttpException $e){verify($e->status===409,'Usuario duplicado rechazado');}
+ $csvImporter=new \FMGlobal\Services\Users\CsvImport($db);
+ $csvHeader=implode(',',\FMGlobal\Services\Users\CsvImport::COLUMNS)."\n";
+ $csvResult=$csvImporter->import($adminId,'test_admin',$csvHeader."CSV Persona,Apellido,,csv_persona@example.test,+51911111111,csv_persona,Valid123!,Asesor\nCSV Duplicado,Apellido,,,,csv_persona,Valid123!,Asesor\nCSV Espacio,Apellido,,,999 111,csv_espacio,Valid123!,Asesor\nCSV Perfil,Apellido,,,,csv_perfil,Valid123!,NoExiste\n");
+ verify($csvResult['imported']===1&&count($csvResult['errors'])===3,'CSV de usuarios importa válidos y registra rechazos');
+ verify($users->forLogin('csv_persona')!==null&&password_verify('Valid123!',$users->forLogin('csv_persona')['password_hash']),'CSV guarda contraseña con hash');
+ verify(!str_contains(json_encode($csvResult),'Valid123!'),'CSV de rechazos no expone contraseñas');
+ foreach(['clave','telefono'] as $field){foreach([' conespacio','con espacio',"con\t_tab","con\u{00A0}nbsp"] as $invalid){
+  foreach([false,true] as $edit){$input=array_replace($seed('space_rejected',2),[$field=>$invalid]);if($edit)$input['usuario_id']=$id;
+   try{$service->save($input,'test_admin',$adminId);throw new RuntimeException('Espacio admitido');}catch(\FMGlobal\Http\HttpException $e){verify($e->status===422,'Sin espacios en '.$field.($edit?' edición':' alta'));}
+  }
+ }}
+ $db->execute_query('UPDATE usuarios SET estado=0 WHERE id=?',[$id]);
+ verify(!isset(\FMGlobal\Repositories\UserNames::selectable($db)[$id]),'Selectores excluyen inactivos');
+ verify(isset(\FMGlobal\Repositories\UserNames::all($db)[$id]),'Historial conserva nombres de inactivos');
+ $db->execute_query('UPDATE usuarios SET estado=1 WHERE id=?',[$id]);
  $db->query("CREATE TRIGGER fail_schedule BEFORE INSERT ON activacion FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Prueba de rollback'");
  try{$service->save($seed('test_rollback',2),'test_admin',$adminId);throw new RuntimeException('No falló el trigger');}catch(mysqli_sql_exception $e){}
  $db->query('DROP TRIGGER fail_schedule');verify($users->forLogin('test_rollback')===null,'Rollback evita usuario parcial');
@@ -80,7 +96,7 @@ try{
  \FMGlobal\Repositories\PublicScheduleRepository::install($db);verify($weeklyRepo->load()===$initial,'Migración repetida conserva programación');
  $socket=stream_socket_server('tcp://127.0.0.1:0',$errno,$errstr);$address=stream_socket_get_name($socket,false);fclose($socket);$base='http://'.$address.'/';
  $env=getenv();$env['FMGLOBAL_DB_HOST']=$config['host'];$env['FMGLOBAL_DB_USER']=$config['user'];$env['FMGLOBAL_DB_PASSWORD']=$config['password'];$env['FMGLOBAL_DB_NAME']=$testDb;
- $server=proc_open([PHP_BINARY,'-S',$address,'-t',FM_ROOT.'/public'],[0=>['pipe','r'],1=>['file',$serverLog,'a'],2=>['file',$serverLog,'a']],$pipes,FM_ROOT,$env);
+ $server=proc_open([PHP_BINARY,'-S',$address,'-t',FM_ROOT.'/public',FM_ROOT.'/tests/helpers/http-router.php'],[0=>['pipe','r'],1=>['file',$serverLog,'a'],2=>['file',$serverLog,'a']],$pipes,FM_ROOT,$env);
  if(!is_resource($server))throw new RuntimeException('No se pudo iniciar PHP local');fclose($pipes[0]);$probe=browser();$ready=false;
  for($i=0;$i<40;$i++){try{$r=http($probe,'login.php');$ready=true;break;}catch(RuntimeException $e){usleep(100000);}}
  if(!$ready)throw new RuntimeException('El servidor temporal no inició');
@@ -88,7 +104,7 @@ try{
  verify(http($probe,'usuario/usuarios.php')['status']===401,'Anónimo sin acceso a usuarios');
  verify(http($probe,'activacion/actualizar_activacion.php','POST',['id'=>$publicId])['status']===401,'Anónimo no modifica horarios');
  verify(http($probe,'usuario/usuario_save.php')['status']===405,'Mutación rechaza GET');
- verify(http($probe,'login.php','POST',['usuario'=>'test_admin','clave'=>'Prueba temporal 123!'])['status']===419,'Login requiere CSRF');
+ verify(http($probe,'login.php','POST',['usuario'=>'test_admin','clave'=>'PruebaTemporal123!'])['status']===419,'Login requiere CSRF');
  $loginPage=http($probe,'login.php');
  verify(str_contains($loginPage['headers'],'X-Frame-Options: DENY') && str_contains($loginPage['headers'],"frame-ancestors 'none'"),'Login impide incrustacion en iframe');
  $loginToken=token($loginPage['body']);
@@ -99,6 +115,10 @@ try{
  foreach(['inicio.php','usuario/usuarios.php','usuario/usuario_list.php','activacion/activacion.php','mantenimiento_gmail.php','soporte/reportes.php','soporte/asesor.php','soporte/soporte.php','soporte/link.php'] as $route)verify(http($adminBrowser,$route)['status']===200,'Admin: '.$route);
  verify(http($adminBrowser,'usuario/usuario_save.php','POST',$seed('csrf_rejected',2))['status']===419,'Guardar requiere CSRF');
  verify($users->forLogin('csrf_rejected')===null,'CSRF no escribe datos');
+ verify(http($adminBrowser,'usuario/usuarios.php','POST',['action'=>'import'])['status']===419,'CSV usuarios exige CSRF');
+ $template=http($adminBrowser,'usuario/usuarios.php?action=template');verify($template['status']===200&&str_contains($template['body'],'nombre,apellido_paterno,apellido_materno,correo,telefono,usuario,clave,perfil'),'Modelo CSV específico de usuarios');
+ verify(http($adminBrowser,'usuario/usuarios.php','POST',['action'=>'import','_csrf'=>$csrf])['status']===422,'Importación usuarios valida archivo adjunto');
+
  foreach(['nombre','apellido_paterno','rol','usuario','clave'] as $required) {
    $invalid=array_replace($seed('invalid_required',2),[$required=>'','_csrf'=>$csrf]);
    verify(http($adminBrowser,'usuario/usuario_save.php','POST',$invalid)['status']===422,'Campo obligatorio: '.$required);
@@ -166,6 +186,12 @@ try{
  verify($activity->platforms([1,2],null)===['netflix'=>1,'disney'=>0],'Distribución pública excluye asesor');
  $db->execute_query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,usuario_id,streaming) VALUES('',1,NOW(),'test_asesor',?,4),('',1,DATE_SUB(NOW(),INTERVAL 31 DAY),'test_asesor',?,4)",[$advisorId,$advisorId]);
  verify($activity->platforms([3,4,5],$advisorId)===['netflix'=>1,'disney'=>1],'Mezcla distingue plataformas y excluye registros antiguos');
+ verify($activity->advisorBreakdown($advisorId)===['netflix_access'=>1,'netflix_login'=>0,'disney'=>1],'Desglose asesor separa acceso/inicio, filtra usuario y período');
+ $db->execute_query("INSERT INTO uso_servicio(correo,num_urls,fecha,usuario,usuario_id,streaming) VALUES('dashboard-split@example.test',1,NOW(),'test_asesor',?,5)",[$advisorId]);
+ verify($activity->advisorBreakdown($advisorId)===['netflix_access'=>1,'netflix_login'=>1,'disney'=>1],'Inicio Netflix no se suma al código de acceso');
+ $splitDashboard=http($advisor,'dashboard.php')['body'];
+ verify(str_contains($splitDashboard,'Netflix · Código de acceso') && str_contains($splitDashboard,'Netflix · Código de inicio') && !str_contains($splitDashboard,'VISTA ALTERNATIVA'),'Inicio usa dashboard nuevo con tres tipos de consulta');
+ $db->query("DELETE FROM uso_servicio WHERE correo='dashboard-split@example.test'");
  verify(http($probe,'soporte/link.php','POST',['event'=>'generated'])['status']===401,'Registro de link exige sesión');
  verify(http($advisor,'mantenimiento_gmail.php','POST',['_csrf'=>$advisorCsrf,'id'=>$gmailId])['status']===403,'Baja Gmail exige permiso');
  verify(http($adminBrowser,'mantenimiento_gmail.php','POST',['id'=>$gmailId])['status']===419,'Baja Gmail exige CSRF');
@@ -199,7 +225,7 @@ try{
  verify($limited['cards'][0]['summary']['total']==2,'activity.all no amplía datos sin perfil administrador');
  $none=$builder->build([],$advisorId);
  verify($none['cards']===[] && !$none['showActivation'] && $none['activation']===$ownSupport['activation'],'Estado de activación común incluso sin servicios autorizados');
- verify(!str_contains(http($advisor,'dashboard.php')['body'],'activation-indicator') && str_contains(http($advisor,'dashboard.php')['body'],'dashboard-overview'),'Asesor recibe estado público y tarjetas en la cuadrícula común');
+ verify(!str_contains(http($advisor,'dashboard.php')['body'],'activation-indicator') && str_contains(http($advisor,'dashboard.php')['body'],'proposal-activity-grid'),'Asesor recibe estado público y tarjetas en la cuadrícula común');
  verify(http($advisor,'activacion/activacion.php')['status']===403,'Ver estado no concede permiso de administrar activación');
  verify(http($advisor,'dashboard.php?report=advisor')['status']===403,'Servicio asesor no concede acceso a su reporte');
  verify(!str_contains(http($advisor,'home.php')['body'],'id="reportesMenu"'),'Menú oculta reporte sin permiso');
@@ -330,10 +356,10 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  verify(empty($permissionRepo->effective($adminId)['services.links']),'Admin respeta permisos denegados');
  verify(http($adminBrowser,'soporte/link.php')['status']===403,'Admin no elude permiso por URL directa');
  $page=http($adminBrowser,'permisos/index.php');
- verify($page['status']===200 && str_contains($page['body'],'value="role" selected'),'Permisos abre por perfil');
+ verify($page['status']===200 && str_contains($page['body'],'id="permissionModeRole" checked'),'Permisos abre por perfil');
  $page=http($adminBrowser,'permisos/index.php?type=user');
- verify($page['status']===200 && str_contains($page['body'],'value="'.$adminId.'"'),'Selector permite configurar admin');
- verify(http($adminBrowser,'permisos/index.php?type=user&id='.$adminId)['status']===200,'Admin tiene configuración de permisos por URL');
+ verify($page['status']===200 && !str_contains($page['body'],'<option value="'.$adminId.'"'),'Selector excluye admin');
+ verify(http($adminBrowser,'permisos/index.php?type=user&id='.$adminId)['status']===404,'Admin no aparece como destinatario en el selector de permisos');
  $values=array_fill_keys(array_keys(\FMGlobal\Security\PermissionCatalog::ITEMS),'deny');
  verify(http($adminBrowser,'permisos/save.php','POST',['_csrf'=>$csrf,'type'=>'user','id'=>$adminId,'revision'=>$permissionRepo->revision(),'permissions'=>$values])['status']===409,'No se puede quitar al último gestor, también para admin');
  $db->execute_query('UPDATE usuarios SET usuario=? WHERE id=?',['test_admin',$adminId]);
@@ -362,12 +388,26 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
  verify(!str_contains($spList['body'],'main-sp@')&&!str_contains($spList['body'],'payment-sp@')&&!str_contains($spList['body'],'next_payment'),'HTTP no expone proveedor al operativo');
  $db->execute_query("UPDATE fm_user_permissions SET allowed=0 WHERE user_id=? AND permission_code='services.spotify'",[$advisorId]);
  verify(http($advisor,'gestion/spotify.php?action=list')['status']===403,'Revocación Spotify bloquea sesión existente');
+ // Rutas externas: autorización independiente y ninguna llamada real a la API.
+ verify(http($probe,'servicios/generador.php?action=status')['status']===401,'Generador externo exige sesión');
+ verify(http($advisor,'servicios/generador.php')['status']===403,'Generador requiere permiso propio');
+ verify(http($adminBrowser,'mantenimiento/restricciones-generador.php')['status']===200,'Configuración externa administrativa');
+ verify(http($adminBrowser,'reportes/links-externos.php?action=list')['status']===200,'Reporte externo administrativo');
+ verify(http($adminBrowser,'servicios/generador.php','POST',['action'=>'generate','payload'=>'{}'])['status']===419,'Generador verifica CSRF');
+ $db->execute_query("INSERT INTO fm_user_permissions VALUES(?,'services.external_links',1) ON DUPLICATE KEY UPDATE allowed=1",[$advisorId]);
+ $status=http($advisor,'servicios/generador.php?action=status');verify($status['status']===200&&str_contains($status['headers'],'fm_external_browser='),'Generador establece cookie de navegador');
+ verify(str_contains($status['headers'],'HttpOnly')||str_contains($status['headers'],'httponly'),'Cookie no accesible a scripts');
+ verify(http($advisor,'mantenimiento/restricciones-generador.php')['status']===403,'Generador no concede configurar restricciones');
+ verify(http($advisor,'reportes/links-externos.php')['status']===403,'Generador no concede reporte');
  // Clientes y reporte: autorización independiente y acceso HTTP real.
  verify(http($probe,'gestion/clientes.php?action=list')['status']===401,'Clientes exige sesión');
  verify(http($adminBrowser,'gestion/clientes.php')['status']===200,'Admin con permiso abre Clientes');
  verify(http($advisor,'gestion/clientes.php')['status']===403,'Asesor sin permiso no abre Clientes');
  verify(http($adminBrowser,'gestion/clientes.php','POST',['payload'=>'{}'])['status']===419,'Clientes exige CSRF');
  $saved=http($adminBrowser,'gestion/clientes.php','POST',['_csrf'=>$csrf,'payload'=>json_encode(['name'=>'Cliente Mantenimiento','phone'=>'+12025550666'])]);verify($saved['status']===200,'Alta de cliente HTTP');
+ verify(http($probe,'gestion/clientes.php?action=information&phone=%2B12025550666')['status']===401,'Información cliente exige sesión');
+ $clientInfo=http($adminBrowser,'gestion/clientes.php?action=information&phone=%2B12025550666');
+ verify($clientInfo['status']===200&&!str_contains($clientInfo['body'],'password_cipher')&&!str_contains($clientInfo['body'],'payment_email'),'Información cliente HTTP autorizada sin datos sensibles');
  $duplicate=http($adminBrowser,'gestion/clientes.php','POST',['_csrf'=>$csrf,'payload'=>json_encode(['name'=>'Otro','phone'=>'+1 (202) 555-0666'])]);verify($duplicate['status']===409,'Duplicado HTTP normalizado');
  verify(http($advisor,'reportes/ventas-spotify.php?action=list')['status']===403,'Reporte independiente de Spotify');
  $db->execute_query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,'reports.spotify_sales',1) ON DUPLICATE KEY UPDATE allowed=1",[$advisorId]);
@@ -383,6 +423,15 @@ verify(!empty($permissionRepo->effective($advisorId)['services.links']),'Migraci
    verify(proc_close($process)===0,'Ejecutor de migraciones '.implode(' ',$flags).': '.$error);
  }
  verify($db->query('SELECT COUNT(*) n FROM uso_servicio')->fetch_assoc()===$migrationCounts,'Ejecutor repetido conserva todos los históricos');
+ if(in_array('--browser',$argv,true)){
+  $qaUsers=new \FMGlobal\Services\Users\UserService(new UserRepository($db),new ScheduleRepository($db));
+  $qaAdmin=$qaUsers->save($seed('qa_admin',1),'test',$adminId);$qaAdvisor=$qaUsers->save($seed('qa_asesor',2),'test',$qaAdmin);$qaExternalRole=(int)$db->query("SELECT rol_id FROM rol WHERE rol_nombre='Externo'")->fetch_assoc()['rol_id'];$qaExternal=$qaUsers->save($seed('qa_externo',$qaExternalRole),'test',$qaAdmin);
+  foreach(['services.spotify','reports.spotify_sales','clients.manage'] as $code)$db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,1)',[$qaAdvisor,$code]);
+  $qaSpotify=new \FMGlobal\Repositories\SpotifyRepository($db,new \FMGlobal\Services\Links\AccountVault());$qaService=(int)$db->query("SELECT id FROM fm_service_types WHERE code='spotify'")->fetch_assoc()['id'];
+  $qaSpotify->execute($qaAdmin,'save',['request_key'=>bin2hex(random_bytes(16)),'service_id'=>$qaService,'email'=>'qa-main@example.test','payment_email'=>'qa-pay@example.test','next_payment'=>'2027-01-01','accounts'=>[['email'=>'qa-one@example.test','password'=>'Synthetic only'],['email'=>'qa-two@example.test','password'=>'Synthetic only']]]);
+  $node='C:/Users/itanc/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe';
+  $qaProcess=proc_open([$node,FM_ROOT.'/tests/browser/full-flow.mjs',$base,(string)$qaAdvisor,(string)$qaExternal],[0=>['pipe','r'],1=>['pipe','w'],2=>['file',$serverLog,'a']],$qaPipes,FM_ROOT,$env);fclose($qaPipes[0]);$qaOutput=stream_get_contents($qaPipes[1]);$qaError='Ver diagnóstico de Chrome';fclose($qaPipes[1]);echo $qaOutput;verify(proc_close($qaProcess)===0,'Recorridos Chrome reales: '.$qaError);
+ }
  echo "$count comprobaciones funcionales correctas en base temporal, sin consultas externas.\n";
 }finally{
  foreach($clients as $client)curl_close($client);

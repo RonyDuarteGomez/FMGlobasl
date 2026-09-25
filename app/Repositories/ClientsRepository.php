@@ -14,6 +14,24 @@ final class ClientsRepository {
   $rows=$this->db->execute_query('SELECT phone,name FROM fm_clients WHERE '.$where.' ORDER BY name,phone LIMIT '.$size.' OFFSET '.(($page-1)*$size),$args)->fetch_all(MYSQLI_ASSOC);
   return compact('rows','total','page','pages');
  }
+ public function information(int $actor,array $filters):array {
+  $this->authorize($actor);$phone=Rules::phone($filters['phone']??null);
+  $client=$this->db->execute_query('SELECT name,phone FROM fm_clients WHERE phone=?',[$phone])->fetch_assoc();
+  if(!$client)throw new HttpException(404,'Cliente no disponible.');
+  $administrator=(int)(new UserRepository($this->db))->identity($actor)['rol_id']===1;
+  $where='a.client_phone=?';$args=[$phone];
+  if(!$administrator){$where.=' AND a.advisor_id=?';$args[]=$actor;}
+  $total=(int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_assignments a WHERE '.$where,$args)->fetch_assoc()['n'];
+  $size=10;$pages=max(1,(int)ceil($total/$size));$page=min($pages,max(1,(int)($filters['page']??1)));$offset=($page-1)*$size;
+  // Explicit projection: no passwords, provider emails or provider payment dates.
+  $rows=$this->db->execute_query("SELECT s.name service,c.email,b.label beneficiary,a.start_date,a.end_date,DATE(a.closed_at) released_at,
+   CASE WHEN a.closed_at IS NOT NULL THEN 'released' WHEN c.state='fallen' THEN 'fallen' WHEN a.end_date<DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR) THEN 'expired' ELSE 'active' END status,
+   CASE WHEN a.closed_at IS NULL THEN DATEDIFF(a.end_date,DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR)) ELSE NULL END days
+   FROM fm_service_assignments a JOIN fm_service_profiles p ON p.id=a.profile_id JOIN fm_service_accounts c ON c.id=p.account_id
+   JOIN fm_service_mains m ON m.id=c.main_id JOIN fm_service_types s ON s.id=m.service_id LEFT JOIN fm_client_beneficiaries b ON b.id=a.beneficiary_id
+   WHERE $where ORDER BY (a.closed_at IS NULL) DESC,a.start_date DESC,a.id DESC LIMIT $size OFFSET $offset",$args)->fetch_all(MYSQLI_ASSOC);
+  return compact('client','rows','total','page','pages');
+ }
  public function save(int $actor,array $input):array {
   $this->authorize($actor);$name=Rules::text($input['name']??null,150);$phone=Rules::phone($input['phone']??null);$original=Rules::text($input['original_phone']??'',40,false);
   $this->db->begin_transaction();try{

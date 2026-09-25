@@ -16,7 +16,7 @@ try {
  $db->query("INSERT INTO rol VALUES(1,'Administrador'),(2,'Asesor'),(3,'Soporte')");PermissionMigration::apply($db);SpotifyMigration::apply($db);SpotifyMigration::apply($db);
  $serviceId=(int)$db->query("SELECT id FROM fm_service_types WHERE code='spotify'")->fetch_assoc()['id'];
  spCheck((int)$db->query('SELECT COUNT(*) n FROM fm_service_types')->fetch_assoc()['n']===1,'Migración repetible');
- $users=new UserService(new UserRepository($db),new ScheduleRepository($db));$seed=fn($u,$r)=>['usuario'=>$u,'nombre'=>'Persona '.$u,'apellido_paterno'=>'Prueba','rol'=>(string)$r,'clave'=>'Synthetic test only 123!'];
+ $users=new UserService(new UserRepository($db),new ScheduleRepository($db));$seed=fn($u,$r)=>['usuario'=>$u,'nombre'=>'Persona '.$u,'apellido_paterno'=>'Prueba','rol'=>(string)$r,'clave'=>'SyntheticTestOnly123!'];
  $admin=$users->save($seed('admin',1),'test',0);$advisor=$users->save($seed('asesor_sp',2),'test',$admin);$other=$users->save($seed('soporte_sp',3),'test',$admin);
  $permissions=new PermissionRepository($db);spCheck(!empty($permissions->effective($admin)['services.spotify'])&&empty($permissions->effective($advisor)['services.spotify']),'Permiso solo administrador por defecto');
  $testKey=random_bytes(32);$repo=new SpotifyRepository($db,new AccountVault($testKey));$op=fn($actor,$action,$data)=>$repo->execute($actor,$action,$data+['request_key'=>bin2hex(random_bytes(16))]);
@@ -53,9 +53,11 @@ try {
  $op($advisor,'credentials',['assignment_id'=>$details['id'],'revision'=>$details['revision'],'account_revision'=>$details['account_revision'],'password'=>'synthetic-updated','profile_name'=>'Perfil nuevo']);
  $edit=$oldMain;$edit['accounts'][0]['password']=$edit['accounts'][0]['password'];spReject(fn()=>$op($admin,'save',$edit),409,'Edición principal obsoleta no pisa contraseña operativa');
  $row=$repo->listing($advisor,[])['rows'][0];$op($advisor,'fall',['assignment_id'=>$row['assignment_id'],'revision'=>$row['revision'],'account_revision'=>$row['account_revision'],'reason'=>'No funciona']);
- spCheck($repo->listing($advisor,[])['total']===0&&$repo->metadata($advisor)['services'][0]['available']===0,'Caída cierra asignación y no queda disponible');
- $fallen=$repo->listing($admin,['state'=>'fallen'])['rows'][0];spCheck($fallen['fallen_reason']==='No funciona','Administrador recibe motivo');spCheck((int)$fallen['fallen_reporter_id']===$advisor&&$fallen['fallen_reporter_name']===\FMGlobal\Repositories\UserNames::all($db)[$advisor]['display_name'],'Caída conserva autor real por ID y muestra su nombre');$rehab=['account_id'=>$fallen['account_id'],'account_revision'=>$fallen['account_revision']];spReject(fn()=>$op($advisor,'rehabilitate',$rehab),403,'Solo admin habilita');$op($admin,'rehabilitate',$rehab);spCheck($repo->metadata($advisor)['services'][0]['available']===1,'Rehabilitación devuelve espacio sin restaurar cliente');
+ spCheck($repo->listing($advisor,[])['total']===1&&$repo->metadata($advisor)['services'][0]['available']===0,'Caída conserva asignación visible fuera de disponibles');
+ $fallen=$repo->listing($admin,['state'=>'fallen'])['rows'][0];spCheck($fallen['fallen_reason']==='No funciona','Administrador recibe motivo');spCheck((int)$fallen['fallen_reporter_id']===$advisor&&$fallen['fallen_reporter_name']===\FMGlobal\Repositories\UserNames::all($db)[$advisor]['display_name'],'Caída conserva autor real por ID y muestra su nombre');$rehab=['account_id'=>$fallen['account_id'],'account_revision'=>$fallen['account_revision']];spReject(fn()=>$op($advisor,'rehabilitate',$rehab),403,'Solo admin habilita');$op($admin,'rehabilitate',$rehab);spCheck($repo->metadata($advisor)['services'][0]['available']===0&&$repo->listing($advisor,[])['total']===1,'Rehabilitación conserva cliente y asesor');
+ $restored=$repo->listing($advisor,[])['rows'][0];$op($advisor,'release',['assignment_id'=>$restored['assignment_id'],'revision'=>$restored['revision'],'account_revision'=>$restored['account_revision'],'password'=>'fixture-release-after-restore']);
  $db->execute_query("UPDATE fm_user_permissions SET allowed=0 WHERE user_id=? AND permission_code='services.spotify'",[$other]);spReject(fn()=>$repo->listing($other,[]),403,'Revocación bloquea');spCheck($repo->metadata($admin)['orphaned']===1,'Alerta de asignaciones sin acceso');
+ $db->execute_query('UPDATE usuarios SET estado=0 WHERE id=?',[$other]);spCheck(!in_array($other,array_column($repo->metadata($admin)['users'],'id'),true),'Selector excluye inactivo con asignaciones');spCheck($repo->metadata($admin)['orphaned']===1,'Inactivo oculto conserva alerta de asignaciones');$db->execute_query('UPDATE usuarios SET estado=1 WHERE id=?',[$other]);
  $orphan=array_values(array_filter($repo->listing($admin,[])['rows'],fn($r)=>(int)$r['advisor_id']===$other))[0];$op($admin,'transfer',['assignment_id'=>$orphan['assignment_id'],'revision'=>$orphan['revision'],'advisor_id'=>$advisor]);spCheck($repo->metadata($admin)['orphaned']===0&&$repo->listing($advisor,[])['total']===1,'Administrador traslada conservando cliente');
  $m=$repo->main($admin,$mainId);$m['next_payment']=date('Y-m-d',strtotime('-1 day'));$op($admin,'save',$m);spCheck($repo->metadata($advisor)['services'][0]['available']===1,'Pago vencido no excluye libres');
  spCheck($repo->listing($admin,['state'=>'available'])['total']===1,'Filtro disponible incluye pago vencido');
@@ -94,6 +96,16 @@ try {
  spReject(fn()=>$op($admin,'pay_bulk',['items'=>[['main_id'=>$mainId,'main_revision'=>$latest['revision']],['main_id'=>999999,'main_revision'=>1]]]),404,'Pago en bloque rechaza cuenta inexistente');
  spCheck($repo->main($admin,$mainId)['next_payment']===$latest['next_payment']&&(int)$db->query('SELECT COUNT(*) n FROM fm_service_payments')->fetch_assoc()['n']===$historyCount,'Fallo revierte todo el bloque y su historial');
  spReject(fn()=>$op($admin,'pay_bulk',['items'=>[['main_id'=>$mainId,'main_revision'=>$latest['revision']],['main_id'=>$mainId,'main_revision'=>$latest['revision']]]]),422,'Bloque no repite principal');
+ // Meses configurables en pago individual y masivo, sin alterar el valor predeterminado.
+ foreach([0,121,'1.5'] as $badMonths) {
+  spReject(fn()=>$op($admin,'pay',['main_id'=>$mainId,'main_revision'=>$latest['revision'],'months'=>$badMonths]),422,'Pago rechaza meses inválidos');
+  spReject(fn()=>$op($admin,'pay_bulk',['items'=>[['main_id'=>$mainId,'main_revision'=>$latest['revision']]],'months'=>$badMonths]),422,'Pago masivo rechaza meses inválidos');
+ }
+ $db->execute_query('UPDATE fm_service_mains SET next_payment=? WHERE id=?',['2028-01-31',$mainId]);
+ $op($admin,'pay',['main_id'=>$mainId,'main_revision'=>$latest['revision'],'months'=>3]);
+ $latest=$repo->main($admin,$mainId);spCheck($latest['next_payment']==='2028-04-30','Pago de tres meses ajusta fin de mes');
+ $op($admin,'pay_bulk',['items'=>[['main_id'=>$mainId,'main_revision'=>$latest['revision']]],'months'=>6]);
+ spCheck($repo->main($admin,$mainId)['next_payment']==='2028-10-30','Pago masivo suma seis meses desde fecha registrada');
  foreach(['expired'=>-1,'soon'=>3,'current'=>4] as $filter=>$days){$db->execute_query('UPDATE fm_service_mains SET next_payment=? WHERE id=?',[date('Y-m-d',strtotime(($days>=0?'+':'').$days.' days')),$mainId]);spCheck($repo->payments($admin,['state'=>$filter])['total']===1,'Filtro de pago '.$filter);foreach(array_diff(['expired','soon','current'],[$filter]) as $excluded)spCheck($repo->payments($admin,['state'=>$excluded])['total']===0,'Exclusión filtro '.$excluded);}
  // Importación CSV real en la base temporal.
  $header=\FMGlobal\Services\Spotify\CsvImport::HEADER;
@@ -111,7 +123,25 @@ try {
  $a=$db->query("SELECT a.* FROM fm_service_assignments a JOIN fm_service_profiles p ON p.id=a.profile_id JOIN fm_service_accounts c ON c.id=p.account_id WHERE c.email='csv-assigned@example.test'")->fetch_assoc();spCheck((int)$a['advisor_id']===$advisor&&$a['end_date']==='2026-02-01','Asigna al ID y conserva vencimiento histórico');
  $extra=[];foreach(range(1,3) as $n){$r=$csvRow;$r[4]='csv-extra'.$n.'@example.test';$extra[]=$r;}
  $import=$repo->importFile($admin,$makeCsv($extra),bin2hex(random_bytes(16)));spCheck($import['loaded']===2&&count($import['errors'])===1,'Máximo cinco secundarias también en CSV');
- $conflict=$csvRow;$conflict[4]='csv-conflict@example.test';$conflict[2]='different@example.test';$import=$repo->importFile($admin,$makeCsv([$conflict]),bin2hex(random_bytes(16)));spCheck($import['loaded']===0,'No modifica datos de principal existente');
+ $conflict=$csvRow;$conflict[4]='csv-conflict@example.test';$conflict[2]='different@example.test';$import=$repo->importFile($admin,$makeCsv([$conflict]),bin2hex(random_bytes(16)));spCheck($import['loaded']===1,'Correo de pago diferente crea un grupo distinto');
+ $sameSecondary=$csvRow;$sameSecondary[2]='different@example.test';
+ $import=$repo->importFile($admin,$makeCsv([$sameSecondary,$sameSecondary]),bin2hex(random_bytes(16)));
+ spCheck($import['loaded']===1&&count($import['errors'])===1,'Permite secundario en otro correo de pago y rechaza triple repetido dentro del CSV');
+ spCheck($import['errors'][0]['values']===$sameSecondary&&str_contains($import['errors'][0]['reason'],'combinación'),'Rechazo contiene fila completa y motivo del triple');
+ $otherMain=$csvRow;$otherMain[1]='identity-other@example.test';
+ spCheck($repo->importFile($admin,$makeCsv([$otherMain]),bin2hex(random_bytes(16)))['loaded']===1,'Permite secundario repetido con otra principal');
+ $manual=['service_id'=>$serviceId,'email'=>'manual-identity@example.test','payment_email'=>'payment@example.test','next_payment'=>'2027-01-31','accounts'=>[['email'=>'shared-secondary@example.test','password'=>'test-secret','profiles'=>[['name'=>'Perfil 1']]]]];
+ $firstIdentity=$op($admin,'save',$manual);
+ spReject(fn()=>$op($admin,'save',$manual),409,'Registro manual rechaza triple repetido');
+ $manual['payment_email']='other-payment@example.test';$op($admin,'save',$manual);
+ $manual['email']='manual-other@example.test';$op($admin,'save',$manual);
+ $manual['accounts'][0]['email']='new-secondary@example.test';$sameGroup=$op($admin,'save',$manual);
+ spCheck(count($repo->main($admin,$sameGroup['id'])['accounts'])===2,'Registro manual agrega otra secundaria al grupo existente');
+ $migrationBefore=$db->query('SELECT id,main_id,email FROM fm_service_accounts ORDER BY id')->fetch_all(MYSQLI_ASSOC);
+ \FMGlobal\Repositories\SpotifyIdentityMigration::apply($db);
+ spCheck($migrationBefore===$db->query('SELECT id,main_id,email FROM fm_service_accounts ORDER BY id')->fetch_all(MYSQLI_ASSOC),'Migración repetida conserva IDs y registros');
+ $malformed=$repo->importFile($admin,$makeCsv([['incompleta']]),bin2hex(random_bytes(16)));
+ spCheck($malformed['loaded']===0&&$malformed['errors'][0]['values']===['incompleta']&&str_contains($malformed['errors'][0]['reason'],'columnas'),'CSV de rechazos incluye filas con columnas incompletas');
  $adminRow=$assigned;$adminRow[1]='another@example.test';$adminRow[4]='csv-admin@example.test';$adminRow[8]='admin';$import=$repo->importFile($admin,$makeCsv([$adminRow]),bin2hex(random_bytes(16)));spCheck($import['loaded']===0,'Admin TI excluido de carga');
  spCheck((int)$db->query("SELECT COUNT(*) n FROM fm_service_mains WHERE email='another@example.test'")->fetch_assoc()['n']===0,'Fila rechazada no deja principal huérfana');
  spReject(fn()=>\FMGlobal\Services\Spotify\CsvImport::parse('cabecera incorrecta'),422,'Rechaza formato incorrecto antes de importar');
@@ -128,8 +158,9 @@ try {
  spCheck($repo->assignedDetails($other,$assigned['assignment_id'])['profile']==='Trasladado','Traslado actualiza perfil y conserva asignación');
  $r=$repo->listing($admin,['q'=>'credential-secondary@example.test'])['rows'][0];$op($admin,'fall',['assignment_id'=>$r['assignment_id'],'revision'=>$r['revision'],'account_revision'=>$r['account_revision']]);
  $r=$repo->listing($admin,['q'=>'credential-secondary@example.test'])['rows'][0];$op($admin,'rehabilitate',['account_id'=>$r['account_id'],'account_revision'=>$r['account_revision'],'profile_id'=>$r['profile_id'],'password'=>'restored-secret','profile_name'=>'Restaurado']);
- $r=$repo->listing($admin,['q'=>'credential-secondary@example.test'])['rows'][0];spCheck($r['password']==='restored-secret'&&$r['profile']==='Restaurado'&&!$r['assignment_id'],'Restauración modifica credenciales sin restaurar asignación');
+ $r=$repo->listing($admin,['q'=>'credential-secondary@example.test'])['rows'][0];spCheck($r['password']==='restored-secret'&&$r['profile']==='Restaurado'&&(int)$r['assignment_id']===(int)$assigned['assignment_id'],'Restauración modifica credenciales conservando asignación');
  spCheck($repo->listing($advisor,['expiry'=>'current'])['total']>=0,'Filtro Al día aceptado');
+ $op($other,'release',['assignment_id'=>$r['assignment_id'],'revision'=>$r['revision'],'account_revision'=>$r['account_revision'],'password'=>'release-after-restore']);
  $edit=$repo->main($admin,(int)$r['main_id']);$removedAccount=$edit['accounts'][0];$edit['accounts']=[];$edit['removed_accounts']=[['id'=>$removedAccount['id'],'revision'=>$removedAccount['revision']]];
  $op($admin,'save',$edit);spCheck($repo->listing($admin,['q'=>'credential-secondary@example.test'])['total']===0,'Baja libre desaparece de ventas');
  spCheck($repo->main($admin,(int)$r['main_id'])['accounts']===[],'Principal puede quedar sin secundarias');

@@ -54,3 +54,25 @@ Los demás usuarios solo consultan y operan sobre sus asignaciones actuales; rec
 ## Clientes y Ventas Spotify
 
 `clients.manage` permite mantener el registro compartido de clientes. `reports.spotify_sales` permite el reporte independiente de Spotify: administrador con permiso ve todo, los demás solo su propio ID. Ningún administrador, incluida la cuenta técnica admin, evita las denegaciones de perfil/usuario; aparece en el selector de permisos. Se conserva la protección del último gestor activo y la exclusión de TI en asignaciones. Ver [detalle de módulos](CLIENTS_AND_SPOTIFY_SALES.md).
+
+## Generador externo
+
+Ver [reglas de septiembre 2026](CHANGES_2026_09.md). services.external_links, reports.external_links y external.restrictions son permisos independientes. Externo recibe solo el servicio inicialmente. Restricciones operativas por perfil/usuario no otorgan acceso a menús. Spotify permite reasignación de cliente propia a asesores, pero reasignar asesor o todas las cuentas requiere rol administrador y permiso Spotify.
+
+La ficha Información de Clientes usa `clients.manage`: administrador ve todas las asignaciones del cliente y no administrador solo las vinculadas a su propio ID (incluidas liberadas). Nunca devuelve contraseñas ni datos de pago del proveedor.
+
+
+### Generador externo en el inicio
+
+- El estado y las restricciones propias del Generador de Link aparecen únicamente para perfiles no administrativos con `services.external_links`; el permiso de reporte por sí solo no los habilita. El administrador no ve este bloque en el inicio.
+- El resumen muestra el cupo del usuario en sesión, el horario de Lima y el estado de su navegador. Registrar o solicitar cambio se realiza desde el generador.
+- Solo el administrador con `external.restrictions` ve arriba el aviso con el número de solicitudes de navegador pendientes y acceso a su gestión.
+
+
+### Selectores de usuarios
+
+Los selectores excluyen usuarios inactivos y la cuenta de acceso `admin`, incluso cuando conservan cuentas asignadas. Esto prevalece sobre la regla anterior que los incluía por tener asignaciones. Los datos históricos y las alertas por cuentas sin acceso se conservan; el mantenimiento de Usuarios permite consultar y reactivar inactivos.
+
+
+### Restablecer vinculación del Generador de Link
+Restablecer elimina todas las vinculaciones del usuario seleccionado (autorizadas, revocadas y pendientes), conservando la auditoría de la acción. El siguiente registro de navegador funciona como el primero, sin aprobación administrativa. Una vez registrado, otro navegador requiere autorización de cambio. No modifica permisos, horarios, cupos ni el historial de generaciones.

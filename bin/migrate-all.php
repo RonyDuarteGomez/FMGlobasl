@@ -7,7 +7,7 @@ $apply=in_array('--apply',$argv,true);
 if ($apply && in_array('--check',$argv,true)) {fwrite(STDERR,"Usa --check o --apply, no ambos.\n");exit(1);}
 $config=require FM_ROOT.'/config/database.php';
 if ($apply && (!in_array($config['host'],['localhost','127.0.0.1'],true)||!str_ends_with($config['database'],'_local'))&&!in_array('--allow-deployment',$argv,true)) {fwrite(STDERR,"Fuera de la base local se requiere --allow-deployment.\n");exit(1);}
-$steps=['migrate-permissions.php','migrate-gmail.php','migrate-public-schedule.php','migrate-links.php','migrate-link-credentials.php','migrate-usage-users.php','migrate-usernames.php','migrate-spotify.php'];
+$steps=['migrate-permissions.php','migrate-gmail.php','migrate-public-schedule.php','migrate-links.php','migrate-link-credentials.php','migrate-usage-users.php','migrate-usernames.php','migrate-spotify.php','migrate-external.php'];
 $locked=false;
 try {
     if (PHP_VERSION_ID<80200) throw new RuntimeException('Se requiere PHP 8.2 o superior.');

@@ -18,7 +18,7 @@ try {
  $db=new mysqli($config['host'],$config['user'],$config['password'],$name);$db->set_charset('utf8mb4');
  $db->query("INSERT INTO rol(rol_id,rol_nombre) VALUES(1,'Administrador'),(2,'Asesor'),(3,'Soporte')");PermissionMigration::apply($db);LinkAccountMigration::apply($db);LinkAccountMigration::apply($db);
  $userService=new \FMGlobal\Services\Users\UserService(new UserRepository($db),new ScheduleRepository($db));
- $seed=fn($user,$role)=>['usuario'=>$user,'nombre'=>'Test','apellido_paterno'=>'Test','rol'=>(string)$role,'clave'=>'Temporary test only 123!'];
+ $seed=fn($user,$role)=>['usuario'=>$user,'nombre'=>'Test','apellido_paterno'=>'Test','rol'=>(string)$role,'clave'=>'TemporaryTestOnly123!'];
  $admin=$userService->save($seed('test_admin',1),'test',0);$advisor=$userService->save($seed('test_advisor',2),'test',$admin);$support=$userService->save($seed('test_support',3),'test',$admin);
  foreach([$advisor,$support] as $id)$db->execute_query("INSERT INTO fm_user_permissions(user_id,permission_code,allowed) VALUES(?,'services.links',1)",[$id]);
  $vault=new AccountVault(random_bytes(32));$repo=new LinkAccountRepository($db,$vault);
@@ -94,6 +94,7 @@ try {
 
  $db->execute_query("UPDATE fm_user_permissions SET allowed=0 WHERE user_id=? AND permission_code='services.links'",[$support]);
  checkLink($repo->users($admin)[0]['id']===$support,'Usuarios con cuentas sin permiso primero');
+ $db->execute_query('UPDATE usuarios SET estado=0 WHERE id=?',[$support]);checkLink(!in_array($support,array_column($repo->users($admin),'id'),true),'Inactivos con cuentas tampoco aparecen en filtros');$db->execute_query('UPDATE usuarios SET estado=1 WHERE id=?',[$support]);
  checkLink($repo->summary($admin)['orphaned']===2,'Alerta por pérdida de permiso');rejectLink(fn()=>$repo->listing($support),403,'Permiso revocado bloquea listado');
  rejectLink(fn()=>$repo->preview($admin,['operation'=>'transfer','source'=>$advisor,'target'=>$support,'quantity'=>1]),422,'Destino sin permiso no válido');
  $p=$repo->preview($admin,$release);$repo->move($admin,$release+['fingerprint'=>$p['fingerprint']]);checkLink($repo->summary($admin)['unassigned']===2,'Libera usuarios sin acceso');

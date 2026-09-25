@@ -3,6 +3,7 @@ namespace FMGlobal\Support;
 final class CleanUrls
 {
     public const MODULES = [
+        'GeneradorExterno'=>'generador-link','RestriccionesExterno'=>'restricciones-generador','ReporteExterno'=>'reportes/links-externos',
         'Clientes'=>'clientes', 'VentasSpotify'=>'reportes/ventas-spotify', 'inicio'=>'inicio', 'Link'=>'link-netflix', 'Spotify'=>'spotify', 'Activacion'=>'soporte-clientes',
         'Autoriza'=>'autorizar-gmail', 'asesorMenu'=>'asesor', 'soporteMenu'=>'soporte',
         'menuUsuarios'=>'usuarios', 'menuPermisos'=>'permisos',

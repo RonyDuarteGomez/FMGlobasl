@@ -10,7 +10,7 @@
   const permissionsKey = 'fm-permissions-' + baseUrl.pathname + (document.querySelector('meta[name="session-key"]')?.content || '');
   function rememberPermissions(params) {
     const selection = new URLSearchParams();
-    for (const name of ['type', 'id']) if (params.has(name)) selection.set(name, params.get(name));
+    for (const name of ['type', 'id', 'view']) if (params.has(name)) selection.set(name, params.get(name));
     try { sessionStorage.setItem(permissionsKey, selection.toString()); } catch (_) {}
   }
   function savedPermissions() {
@@ -72,6 +72,7 @@
       const permissionsForm = content.querySelector('#permissionsForm');
       if (permissionsForm) rememberPermissions(new URLSearchParams(new FormData(permissionsForm)));
       if (init && typeof window[init] === 'function') window[init]();
+      if (content.querySelector('.permission-preview #permissionsForm')) initPermissionPreview();
       if (document.getElementById('tablaGmail')) initGmailTable();
     } catch (error) {
       if (error.name !== 'AbortError') content.textContent = error.message;
@@ -82,7 +83,10 @@
     document.querySelectorAll('[data-module]').forEach(item => item.removeAttribute('aria-current'));
     button.setAttribute('aria-current', 'page');
     if (historyMode) updateAddress(button, historyMode === 'replace');
-    const selection = button.id === 'menuPermisos' ? savedPermissions() : '';
+    let selection = button.id === 'menuPermisos' ? savedPermissions() : '';
+    if(button.id==='menuPermisos'&&historyMode===true){
+      const params=new URLSearchParams(selection);params.set('type','role');params.delete('id');selection=params.toString();
+    }
     loadModule(button.dataset.module + (selection ? '?' + selection : ''), button.dataset.init);
   }
   document.addEventListener('click', event => {
@@ -112,7 +116,7 @@
       loadModule(event.target.form.dataset.moduleFilter + '?' + new URLSearchParams(new FormData(event.target.form)));
     }
     if (event.target.matches('[data-module-filter="permisos/index.php"] [name="type"]')) {
-      loadModule('permisos/index.php?type=' + encodeURIComponent(event.target.value));
+      const params=new URLSearchParams(new FormData(event.target.form));params.delete('id');loadModule('permisos/index.php?' + params);
     }
     if (event.target.matches('[data-module-filter="permisos/index.php"] [name="id"]')) {
       loadModule('permisos/index.php?' + new URLSearchParams(new FormData(event.target.form)));
@@ -147,11 +151,30 @@
         if (!response.ok) throw new Error(data.message || 'No se pudieron guardar los permisos.');
         status.textContent = data.message;
         // Recargar aplica también los permisos nuevos al propio menú del administrador.
-        rememberPermissions(new URLSearchParams({ type: form.elements.type.value, id: form.elements.id.value }));
+        rememberPermissions(new URLSearchParams(new FormData(form)));
         window.location.href = new URL('sistema/permisos', baseUrl);
       } catch (error) { status.textContent = error.message; button.disabled = false; }
     }
   });
+  function initPermissionPreview(){
+    const root=content.querySelector('.permission-preview'),form=root.querySelector('#permissionsForm'),status=root.querySelector('#permissionStatus');
+    function refresh(changed=false){
+      root.querySelectorAll('.permission-preview-row').forEach(row=>{
+        const value=row.querySelector('input:checked').value,allowed=value==='allow'||(value==='inherit'&&row.dataset.inherited==='1');row.dataset.allowed=allowed?'1':'0';
+        const final=row.querySelector('.permission-final-access');
+        if(final){final.className='badge permission-final-access text-white '+(allowed?'bg-success':'bg-danger');final.textContent=allowed?'Permitido':'Sin acceso';row.querySelector('.permission-access-source').hidden=value!=='inherit';}
+
+      });
+      root.querySelectorAll('.permission-preview-group').forEach(group=>{group.querySelector('.permission-group-count').textContent=group.querySelectorAll('[data-allowed="1"]').length+' de '+group.querySelectorAll('.permission-preview-row').length+' con acceso';});
+      if(changed)status.textContent='Cambios pendientes de guardar.';
+    }
+    form.addEventListener('change',()=>refresh(true));
+    root.querySelector('#restoreProfilePermissions')?.addEventListener('click',()=>{
+      form.querySelectorAll('input[type="radio"][value="inherit"]').forEach(input=>input.checked=true);
+      form.querySelectorAll('input[type="hidden"][name^="permissions["]').forEach(input=>input.value='inherit');
+      refresh(true);status.textContent='Se quitarán las excepciones y se usarán los permisos del perfil al guardar.';
+    });refresh();
+  }
   function initGmailTable() {
     const tbody = document.querySelector('#tablaGmail tbody');
     const rows = [...tbody.querySelectorAll('tr[data-token-active]')];

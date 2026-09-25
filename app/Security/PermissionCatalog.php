@@ -3,6 +3,9 @@ namespace FMGlobal\Security;
 final class PermissionCatalog
 {
     public const ITEMS = [
+        'services.external_links'=>['Servicios','Generador de Link'],
+        'external.restrictions'=>['Mantenimiento','Permisos de Generador de Link'],
+        'reports.external_links'=>['Reportes','Generador de Link'],
         'services.activation'=>['Servicios','Soporte clientes'],
         'services.links'=>['Gestión','Link Netflix'],
         'clients.manage'=>['Gestión','Clientes'],
@@ -16,7 +19,7 @@ final class PermissionCatalog
         'reports.support'=>['Reportes','Consultas soporte'],
         'reports.links'=>['Reportes','Consultas link'],
         'users.manage'=>['Mantenimiento','Usuarios'],
-        'permissions.manage'=>['Mantenimiento','Permisos'],
+        'permissions.manage'=>['Mantenimiento','Permisos usuarios'],
         'activity.own'=>['Información','Ver actividad propia'],
         'activity.all'=>['Información','Ver actividad de todos'],
     ];
@@ -32,6 +35,9 @@ final class PermissionCatalog
     public static function route(string $route): ?string
     {
         return match ($route) {
+            'servicios/generador.php'=>'services.external_links',
+            'mantenimiento/restricciones-generador.php'=>'external.restrictions',
+            'reportes/links-externos.php'=>'reports.external_links',
             'home.php','dashboard.php','logout.php','session.php'=>null,
             'inicio.php'=>'reports.public',
             'soporte/reportes.php'=>'reports.internal',

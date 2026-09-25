@@ -23,17 +23,22 @@ final class SpotifyRepository {
   $this->db->begin_transaction();
   try {
    (new PermissionRepository($this->db))->lock();$this->actor($actor);
-   if(in_array($action,['save','rehabilitate','transfer','import','pay','pay_bulk'],true))$this->admin($actor);
+   if(in_array($action,['save','rehabilitate','transfer_bulk','import','pay','pay_bulk'],true))$this->admin($actor);
    $old=$this->db->execute_query('SELECT action,input_hash,result_json FROM fm_service_commands WHERE actor_id=? AND request_key=?',[$actor,$key])->fetch_assoc();
    if($old){if($old['action']!==$action||!hash_equals($old['input_hash'],$hash))throw new HttpException(409,'La operación cambió. Abre de nuevo el formulario.');$this->db->commit();return json_decode($old['result_json'],true,512,JSON_THROW_ON_ERROR);}
-   $result=match($action){'pay_bulk'=>$this->payBulk($actor,$input),'pay'=>$this->pay($actor,$input),'import'=>$this->importCsv($actor,$input),'save'=>$this->save($actor,$input),'obtain'=>$this->obtain($actor,$input),'renew'=>$this->renew($actor,$input),'release'=>$this->release($actor,$input),'fall'=>$this->fall($actor,$input),'rehabilitate'=>$this->rehabilitate($actor,$input),'credentials'=>$this->credentials($actor,$input),'transfer'=>$this->transfer($actor,$input),default=>throw new HttpException(422,'Acción no válida.')};
+   $result=match($action){'transfer_bulk'=>$this->transferBulk($actor,$input),'read_notification'=>$this->readNotification($actor,$input),'pay_bulk'=>$this->payBulk($actor,$input),'pay'=>$this->pay($actor,$input),'import'=>$this->importCsv($actor,$input),'save'=>$this->save($actor,$input),'obtain'=>$this->obtain($actor,$input),'renew'=>$this->renew($actor,$input),'release'=>$this->release($actor,$input),'fall'=>$this->fall($actor,$input),'rehabilitate'=>$this->rehabilitate($actor,$input),'credentials'=>$this->credentials($actor,$input),'transfer'=>$this->transfer($actor,$input),default=>throw new HttpException(422,'Acción no válida.')};
    $this->db->execute_query('INSERT INTO fm_service_commands(actor_id,request_key,action,input_hash,result_json,created_at) VALUES(?,?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$actor,$key,$action,$hash,json_encode($result,JSON_THROW_ON_ERROR)]);
    $this->db->commit();return $result;
   }catch(\Throwable $e){$this->db->rollback();if($e instanceof \mysqli_sql_exception&&$e->getCode()===1062)throw new HttpException(409,'El correo o registro ya existe. Revisa los datos.');throw $e;}
  }
  public function importFile(int $actor,string $text,string $key):array {
   $this->admin($actor);
-  return $this->execute($actor,'import',['request_key'=>$key,'rows'=>\FMGlobal\Services\Spotify\CsvImport::parse($text)]);
+  $rows=\FMGlobal\Services\Spotify\CsvImport::parse($text);
+  $result=$this->execute($actor,'import',['request_key'=>$key,'rows'=>$rows]);
+  // Raw CSV values are returned only to the uploader, never saved in command history.
+  $byLine=array_column($rows,null,'_line');
+  foreach($result['errors'] as &$error){$row=$byLine[$error['line']]??[];$error['values']=$row['_values']??array_map(fn($column)=>$row[$column]??'',\FMGlobal\Services\Spotify\CsvImport::HEADER);}unset($error);
+  return $result;
  }
  private function importCsv(int $actor,array $input):array {
   $this->admin($actor);$rows=$input['rows']??[];
@@ -43,34 +48,35 @@ final class SpotifyRepository {
    $this->db->query('SAVEPOINT csv_row');
    try{
     if(!is_array($r))throw new HttpException(422,'Fila no válida.');
+    if(isset($r['_parse_error']))throw new HttpException(422,$r['_parse_error']);
     foreach(\FMGlobal\Services\Spotify\CsvImport::HEADER as $column)if(!isset($r[$column])||!is_string($r[$column]))throw new HttpException(422,'Faltan columnas.');
     $service=$this->db->execute_query('SELECT * FROM fm_service_types WHERE name=? AND active=1',[$r['servicio']])->fetch_assoc();
     if(!$service)throw new HttpException(422,'Tipo de servicio inexistente o inactivo.');
     $email=Rules::email($r['correo_principal']);$payment=Rules::email($r['correo_pago']);$next=Rules::date($r['proximo_pago']);$secondary=Rules::email($r['correo_secundario']);$password=Rules::password($r['contrasena']);$profile=Rules::text($r['perfil'],80,false)?:'Perfil 1';
     if(!in_array($r['estado_cuenta'],['habilitada','caida'],true))throw new HttpException(422,'Estado permitido: habilitada o caida.');
-    if($this->db->execute_query('SELECT id FROM fm_service_accounts WHERE email=?',[$secondary])->fetch_assoc())throw new HttpException(409,'Correo secundario ya registrado.');
+    if($this->db->execute_query('SELECT c.id FROM fm_service_accounts c JOIN fm_service_mains m ON m.id=c.main_id WHERE m.service_id=? AND m.email=? AND m.payment_email=? AND c.email=?',[$service['id'],$email,$payment,$secondary])->fetch_assoc())throw new HttpException(409,'Duplicado: ya existe la combinación de correo principal, correo de pago y correo secundario.');
     $assigned=false;foreach(['asesor_usuario','cliente_nombre','cliente_celular','inicio_servicio','vencimiento_servicio','ultima_renovacion'] as $c)if($r[$c]!=='')$assigned=true;
     $advisor=null;$renew=null;
     if($assigned){
      if($r['estado_cuenta']==='caida')throw new HttpException(422,'Una cuenta caída no puede tener asignación.');
      $advisor=(new UserRepository($this->db))->forLogin(Rules::text($r['asesor_usuario'],100));
      if(!$advisor||(int)$advisor['estado']!==1||(new PermissionRepository($this->db))->isSuperuser((int)$advisor['id'])||empty((new PermissionRepository($this->db))->effective((int)$advisor['id'])['services.spotify']))throw new HttpException(422,'El asesor no existe, está inactivo o no tiene permiso para Spotify. Admin no recibe cuentas.');
-     $phone=Rules::phone($r['cliente_celular']);$name=Rules::text($r['cliente_nombre'],150);$start=Rules::date($r['inicio_servicio']);$end=Rules::date($r['vencimiento_servicio']);
+     $phone=$r['cliente_celular']===''&&$r['cliente_nombre']===''?null:Rules::phone($r['cliente_celular']);$name=$phone===null?'':Rules::text($r['cliente_nombre'],150);$start=Rules::date($r['inicio_servicio']);$end=Rules::date($r['vencimiento_servicio']);
      if($end<=$start)throw new HttpException(422,'El vencimiento debe ser posterior al inicio.');
      if($r['ultima_renovacion']!==''){$renew=Rules::date($r['ultima_renovacion']);if($renew<$start||$renew>date('Y-m-d')||$renew>$end)throw new HttpException(422,'Última renovación fuera del rango permitido.');}
      $client=$this->db->execute_query('SELECT name FROM fm_clients WHERE phone=?',[$phone])->fetch_assoc();
      if($client&&$client['name']!==$name)throw new HttpException(409,'El celular pertenece a un cliente con otro nombre.');
     }
-    $main=$this->db->execute_query('SELECT * FROM fm_service_mains WHERE service_id=? AND email=? FOR UPDATE',[$service['id'],$email])->fetch_assoc();
+    $main=$this->db->execute_query('SELECT * FROM fm_service_mains WHERE service_id=? AND email=? AND payment_email=? FOR UPDATE',[$service['id'],$email,$payment])->fetch_assoc();
     if($main){
-     if($main['payment_email']!==$payment||$main['next_payment']!==$next)throw new HttpException(409,'Los datos de pago difieren de la cuenta principal existente.');
+     if($main['next_payment']!==$next)throw new HttpException(409,'Los datos de pago difieren de la cuenta principal existente.');
      $mainId=(int)$main['id'];
     }else{$this->db->execute_query('INSERT INTO fm_service_mains(service_id,email,payment_email,next_payment,created_at,updated_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR),(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$service['id'],$email,$payment,$next]);$mainId=(int)$this->db->insert_id;}
     if((int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_accounts WHERE main_id=? AND state<>"deleted"',[$mainId])->fetch_assoc()['n']>=(int)$service['max_accounts'])throw new HttpException(422,'Se supera el límite de secundarias de la cuenta principal.');
     $this->db->execute_query('INSERT INTO fm_service_accounts(main_id,email,password_cipher,state,created_at,updated_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR),(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$mainId,$secondary,$this->vault->encrypt($password),$r['estado_cuenta']==='caida'?'fallen':'enabled']);$accountId=(int)$this->db->insert_id;
     $this->db->execute_query('INSERT INTO fm_service_profiles(account_id,name) VALUES(?,?)',[$accountId,$profile]);$profileId=(int)$this->db->insert_id;
     if($assigned){
-     if(!$client)$this->db->execute_query('INSERT INTO fm_clients(phone,name,created_by,created_at) VALUES(?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$phone,$name,$actor]);
+     if($phone!==null&&!$client)$this->db->execute_query('INSERT INTO fm_clients(phone,name,created_by,created_at) VALUES(?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$phone,$name,$actor]);
      $this->db->execute_query('INSERT INTO fm_service_assignments(profile_id,client_phone,advisor_id,start_date,end_date,last_renewed_at,created_by,created_at) VALUES(?,?,?,?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$profileId,$phone,$advisor['id'],$start,$end,$renew,$actor]);$assignmentId=(int)$this->db->insert_id;
      $this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=? WHERE id=?',[$assignmentId,$profileId]);
     }
@@ -85,9 +91,9 @@ final class SpotifyRepository {
   return ['loaded'=>$loaded,'errors'=>$errors,'message'=>$loaded.' filas cargadas; '.count($errors).' rechazadas.'];
  }
  private function payBulk(int $actor,array $input):array {
-  $this->admin($actor);$items=$input['items']??null;
+  $this->admin($actor);$months=Rules::months($input['months']??1);$items=$input['items']??null;
   if(!is_array($items)||!$items||count($items)>50)throw new HttpException(422,'Selecciona entre 1 y 50 cuentas principales.');
-  $seen=[];foreach($items as $item){if(!is_array($item))throw new HttpException(422,'Selección no válida.');$id=Rules::id($item['main_id']??null);if(isset($seen[$id]))throw new HttpException(422,'Cuenta principal repetida.');$seen[$id]=true;$this->pay($actor,$item);}
+  $seen=[];foreach($items as $item){if(!is_array($item))throw new HttpException(422,'Selección no válida.');$id=Rules::id($item['main_id']??null);if(isset($seen[$id]))throw new HttpException(422,'Cuenta principal repetida.');$seen[$id]=true;$this->pay($actor,array_replace($item,['months'=>$months]));}
   return ['message'=>count($items).' pagos registrados.'];
  }
  public function payments(int $actor,array $filters):array {
@@ -108,11 +114,14 @@ final class SpotifyRepository {
   $main=$this->db->execute_query('SELECT next_payment,revision FROM fm_service_mains WHERE id=? FOR UPDATE',[$id])->fetch_assoc();
   if(!$main)throw new HttpException(404,'Cuenta principal no disponible.');
   if((int)($input['main_revision']??0)!==(int)$main['revision'])throw new HttpException(409,'Los datos de pago cambiaron. Actualiza la tabla.');
-  $next=Rules::month($main['next_payment']);
+  $months=Rules::months($input['months']??1);$next=Rules::addMonths($main['next_payment'],$months);
   $this->db->execute_query('UPDATE fm_service_mains SET next_payment=?,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?',[$next,$id]);
   $this->db->execute_query('INSERT INTO fm_service_payments(main_id,actor_id,previous_date,next_date,created_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$id,$actor,$main['next_payment'],$next]);
-  $this->audit($actor,'provider_payment',$id,['before'=>$main['next_payment'],'after'=>$next]);
+  $this->audit($actor,'provider_payment',$id,['before'=>$main['next_payment'],'after'=>$next,'months'=>$months]);
   return ['message'=>'Pago registrado. Próximo pago: '.date('d/m/Y',strtotime($next)).'.'];
+ }
+ private function assertAccountUnique(int $mainId,string $email,int $except=0):void {
+  if($this->db->execute_query('SELECT id FROM fm_service_accounts WHERE main_id=? AND email=? AND id<>?',[$mainId,$email,$except])->fetch_assoc())throw new HttpException(409,'Duplicado: ya existe la combinación de correo principal, correo de pago y correo secundario.');
  }
  private function service(int $id):array {$row=$this->db->execute_query('SELECT * FROM fm_service_types WHERE id=? AND active=1',[$id])->fetch_assoc();if(!$row)throw new HttpException(422,'Servicio no disponible.');return $row;}
  private function eligible(int $id):void {if((new PermissionRepository($this->db))->isSuperuser($id))throw new HttpException(422,'Admin es una cuenta de TI y no recibe asignaciones.');$this->actor($id);}
@@ -123,14 +132,19 @@ final class SpotifyRepository {
   if((int)($input['revision']??0)!==(int)$row['revision'])throw new HttpException(409,'La asignación cambió. Actualiza la tabla.');return $row;
  }
  private function save(int $actor,array $input):array {
-  $this->admin($actor);$id=(int)($input['id']??0);$service=$this->service(Rules::id($input['service_id']??null));
+  $this->admin($actor);$id=(int)($input['id']??0);$creating=$id===0;$service=$this->service(Rules::id($input['service_id']??null));
   $email=Rules::email($input['email']??null);$payment=Rules::email($input['payment_email']??null);$date=Rules::date($input['next_payment']??null);
   $accounts=$input['accounts']??null;
   if(!is_array($accounts)||($id===0&&count($accounts)<1)||count($accounts)>(int)$service['max_accounts'])throw new HttpException(422,'Respeta el máximo de '.$service['max_accounts'].' cuentas secundarias.');
   if($id){$old=$this->db->execute_query('SELECT * FROM fm_service_mains WHERE id=? FOR UPDATE',[$id])->fetch_assoc();if(!$old)throw new HttpException(404,'Cuenta principal no disponible.');if((int)($input['revision']??0)!==(int)$old['revision'])throw new HttpException(409,'La cuenta principal cambió. Abre de nuevo su edición.');if((int)$old['service_id']!==(int)$service['id'])throw new HttpException(422,'No cambies el servicio de una cuenta existente.');
    $this->db->execute_query('UPDATE fm_service_mains SET email=?,payment_email=?,next_payment=?,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?',[$email,$payment,$date,$id]);
-  }else{$this->db->execute_query('INSERT INTO fm_service_mains(service_id,email,payment_email,next_payment,created_at,updated_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR),(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$service['id'],$email,$payment,$date]);$id=(int)$this->db->insert_id;}
+  }else{
+   $existing=$this->db->execute_query('SELECT id,next_payment FROM fm_service_mains WHERE service_id=? AND email=? AND payment_email=? FOR UPDATE',[$service['id'],$email,$payment])->fetch_assoc();
+   if($existing){$id=(int)$existing['id'];if($existing['next_payment']!==$date)throw new HttpException(409,'La fecha de pago difiere del grupo existente. Edita sus datos de pago.');}
+   else{$this->db->execute_query('INSERT INTO fm_service_mains(service_id,email,payment_email,next_payment,created_at,updated_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR),(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$service['id'],$email,$payment,$date]);$id=(int)$this->db->insert_id;}
+  }
   $removed=$input['removed_accounts']??[];
+  if($creating&&$removed)throw new HttpException(422,'No se pueden eliminar cuentas al registrar nuevas.');
   if(!is_array($removed))throw new HttpException(422,'Selección de bajas no válida.');
   foreach($removed as $remove){
    if(!is_array($remove))throw new HttpException(422,'Cuenta no válida.');$removeId=Rules::id($remove['id']??null);
@@ -144,6 +158,8 @@ final class SpotifyRepository {
    if(!is_array($account))throw new HttpException(422,'Cuenta secundaria no válida.');
    $assignedAccount=false;$accountId=(int)($account['id']??0);$mail=Rules::email($account['email']??null);$password=Rules::password($account['password']??null);$profiles=$account['profiles']??[['name'=>'Perfil 1']];
    if(!is_array($profiles)||!$profiles||count($profiles)>(int)$service['max_profiles'])throw new HttpException(422,'Respeta el máximo de '.$service['max_profiles'].' perfiles por cuenta.');
+   if($creating&&$accountId)throw new HttpException(422,'Usa editar para modificar una cuenta existente.');
+   $this->assertAccountUnique($id,$mail,$accountId);
    if($accountId){if(isset($seen[$accountId]))throw new HttpException(422,'Cuenta secundaria repetida.');$oldAccount=$this->db->execute_query('SELECT * FROM fm_service_accounts WHERE id=? AND main_id=? AND state<>"deleted" FOR UPDATE',[$accountId,$id])->fetch_assoc();if(!$oldAccount)throw new HttpException(422,'La cuenta secundaria no pertenece a esta principal.');if((int)($account['revision']??0)!==(int)$oldAccount['revision'])throw new HttpException(409,'Cambió una contraseña o un perfil. Actualiza la edición.');$assignedAccount=(bool)$this->db->execute_query('SELECT id FROM fm_service_profiles WHERE account_id=? AND current_assignment_id IS NOT NULL LIMIT 1',[$accountId])->fetch_assoc();
     if($assignedAccount&&($mail!==$oldAccount['email']||!hash_equals($this->vault->decrypt($oldAccount['password_cipher']),$password)))throw new HttpException(409,'Los campos de una cuenta asignada no se pueden editar desde este formulario.');
     $this->db->execute_query('UPDATE fm_service_accounts SET email=?,password_cipher=?,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?',[$mail,$this->vault->encrypt($password),$accountId]);
@@ -155,7 +171,9 @@ final class SpotifyRepository {
    }
    if((int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_profiles WHERE account_id=?',[$accountId])->fetch_assoc()['n']!==count($profileSeen))throw new HttpException(422,'No se pueden omitir perfiles existentes.');
   }
-  if((int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_accounts WHERE main_id=? AND state<>"deleted"',[$id])->fetch_assoc()['n']!==count($seen))throw new HttpException(422,'No se pueden omitir cuentas existentes.');
+  $accountCount=(int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_accounts WHERE main_id=? AND state<>"deleted"',[$id])->fetch_assoc()['n'];
+  if($accountCount>(int)$service['max_accounts'])throw new HttpException(422,'Se supera el límite de cuentas secundarias de este grupo.');
+  if(!$creating&&$accountCount!==count($seen))throw new HttpException(422,'No se pueden omitir cuentas existentes.');
   $this->audit($actor,'save_main',$id,['next_payment'=>$date]);return ['id'=>$id,'message'=>'Cuenta principal guardada.'];
  }
  public function main(int $actor,int $id):array {
@@ -163,44 +181,43 @@ final class SpotifyRepository {
   $row['accounts']=$this->db->execute_query('SELECT id,email,password_cipher,revision,EXISTS(SELECT 1 FROM fm_service_profiles p WHERE p.account_id=fm_service_accounts.id AND p.current_assignment_id IS NOT NULL) assigned FROM fm_service_accounts WHERE main_id=? AND state<>"deleted" ORDER BY id',[$id])->fetch_all(MYSQLI_ASSOC);
   foreach($row['accounts'] as &$account){$account['password']=$this->vault->decrypt($account['password_cipher']);unset($account['password_cipher']);$account['profiles']=$this->db->execute_query('SELECT id,name FROM fm_service_profiles WHERE account_id=? ORDER BY id',[$account['id']])->fetch_all(MYSQLI_ASSOC);}unset($account);return $row;
  }
- public function client(int $actor,string $phone):?array {$this->actor($actor);$phone=Rules::phone($phone);return $this->db->execute_query('SELECT phone,name FROM fm_clients WHERE phone=?',[$phone])->fetch_assoc();}
+ public function client(int $actor,string $phone):?array {$this->actor($actor);$phone=Rules::phone($phone);$client=$this->db->execute_query('SELECT phone,name FROM fm_clients WHERE phone=?',[$phone])->fetch_assoc();if($client)$client['beneficiaries']=$this->db->execute_query('SELECT label FROM fm_client_beneficiaries WHERE client_phone=? ORDER BY label',[$phone])->fetch_all(MYSQLI_ASSOC);return $client;}
  private function obtain(int $actor,array $input):array {
   $who=$this->actor($actor);$target=$who['admin']?Rules::id($input['advisor_id']??null):$actor;$this->eligible($target);
-  $service=$this->service(Rules::id($input['service_id']??null));$phone=Rules::phone($input['phone']??null);$name=Rules::text($input['client_name']??'',150);$start=Rules::date($input['start_date']??null);
-  $client=$this->db->execute_query('SELECT phone,name FROM fm_clients WHERE phone=? FOR UPDATE',[$phone])->fetch_assoc();
-  if(!$client){$this->db->execute_query('INSERT INTO fm_clients(phone,name,created_by,created_at) VALUES(?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$phone,$name,$actor]);$this->audit($actor,'create_client',0);}
-  elseif($client['name']!==$name)throw new HttpException(409,'El celular ya pertenece a un cliente. Usa su nombre registrado.');
+  $service=$this->service(Rules::id($input['service_id']??null));$phone=$this->resolveClient($actor,$input);$start=Rules::date($input['start_date']??null);$months=Rules::months($input['months']??1);
   $sql="SELECT p.id FROM fm_service_profiles p JOIN fm_service_accounts c ON c.id=p.account_id JOIN fm_service_mains m ON m.id=c.main_id WHERE m.service_id=? AND c.state='enabled' AND p.current_assignment_id IS NULL";$args=[$service['id']];
   if(!empty($input['profile_id'])){if(!$who['admin'])throw new HttpException(403,'No puedes seleccionar el inventario libre.');$sql.=' AND p.id=?';$args[]=Rules::id($input['profile_id']);}
   $profile=$this->db->execute_query($sql.' ORDER BY RAND() LIMIT 1 FOR UPDATE',$args)->fetch_assoc();
-  if(!$profile)return ['available'=>false,'message'=>'No hay cuentas disponibles. El cliente quedó registrado.'];
-  $this->db->execute_query('INSERT INTO fm_service_assignments(profile_id,client_phone,advisor_id,start_date,end_date,created_by,created_at) VALUES(?,?,?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$profile['id'],$phone,$target,$start,Rules::month($start),$actor]);$id=(int)$this->db->insert_id;
+  if(!$profile)return ['available'=>false,'message'=>'No hay cuentas disponibles.'];
+  $this->db->execute_query('INSERT INTO fm_service_assignments(profile_id,client_phone,advisor_id,start_date,end_date,created_by,created_at) VALUES(?,?,?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$profile['id'],$phone,$target,$start,Rules::addMonths($start,$months),$actor]);$id=(int)$this->db->insert_id;
   $this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=? WHERE id=? AND current_assignment_id IS NULL',[$id,$profile['id']]);
+  $this->db->execute_query('UPDATE fm_service_assignments SET months=?,beneficiary_id=? WHERE id=?',[$months,$this->beneficiary($phone,$input),$id]);
   if($who['admin']&&array_key_exists('password',$input)){$row=$this->assignment($actor,['assignment_id'=>$id,'revision'=>1]);$this->changeCredentials($actor,$input,$row,false);}
-  $this->audit($actor,'obtain',$id,['advisor_id'=>$target,'seller_ids'=>[$target]]);return ['available'=>true,'assignment_id'=>$id,'message'=>'Cuenta asignada.'];
+  $this->audit($actor,'obtain',$id,['advisor_id'=>$target,'seller_ids'=>[$target],'months'=>$months]);return ['available'=>true,'assignment_id'=>$id,'message'=>'Cuenta asignada.'];
  }
  public function assignedDetails(int $actor,int $id):array {
   $who=$this->actor($actor);$row=$this->db->execute_query('SELECT a.id,a.revision,a.advisor_id,p.name profile,c.email,c.password_cipher,c.revision account_revision FROM fm_service_assignments a JOIN fm_service_profiles p ON p.current_assignment_id=a.id JOIN fm_service_accounts c ON c.id=p.account_id WHERE a.id=? AND a.closed_at IS NULL',[$id])->fetch_assoc();
   if(!$row||(!$who['admin']&&(int)$row['advisor_id']!==$actor))throw new HttpException(404,'Asignación no disponible.');$row['password']=$this->vault->decrypt($row['password_cipher']);unset($row['password_cipher']);return $row;
  }
  private function renew(int $actor,array $input):array {
-  $row=$this->assignment($actor,$input);$end=Rules::month($row['end_date']);
+  $row=$this->assignment($actor,$input);if($row['state']==='fallen')throw new HttpException(409,'La cuenta está caída. Espera su habilitación.');$months=Rules::months($input['months']??1);$end=Rules::addMonths($row['end_date'],$months);
   $this->db->execute_query('INSERT INTO fm_service_renewals(assignment_id,previous_end,new_end,actor_id,created_at) VALUES(?,?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$row['id'],$row['end_date'],$end,$actor]);
-  $this->db->execute_query('UPDATE fm_service_assignments SET end_date=?,last_renewed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),revision=revision+1 WHERE id=?',[$end,$row['id']]);$this->audit($actor,'renew',(int)$row['id'],['before'=>$row['end_date'],'after'=>$end,'seller_ids'=>[(int)$row['advisor_id']]]);return ['message'=>'Servicio renovado hasta '.$end.'.'];
+  $this->db->execute_query('UPDATE fm_service_renewals SET months=? WHERE id=?',[$months,$this->db->insert_id]);
+  $this->db->execute_query('UPDATE fm_service_assignments SET end_date=?,last_renewed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),revision=revision+1 WHERE id=?',[$end,$row['id']]);$this->audit($actor,'renew',(int)$row['id'],['months'=>$months,'before'=>$row['end_date'],'after'=>$end,'seller_ids'=>[(int)$row['advisor_id']]]);return ['message'=>'Servicio renovado hasta '.$end.'.'];
  }
  private function changeCredentials(int $actor,array $input,array $row,bool $release):void {
   if((int)($input['account_revision']??0)!==(int)$row['account_revision'])throw new HttpException(409,'Cambió la contraseña o el perfil. Actualiza la tabla.');
   $password=Rules::password($input['password']??null);$current=$this->vault->decrypt($row['password_cipher']);
   if($release&&hash_equals($current,$password))throw new HttpException(422,'Registra una contraseña diferente antes de liberar.');
   $others=(int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_profiles WHERE account_id=? AND current_assignment_id IS NOT NULL AND current_assignment_id<>?',[$row['account_id'],$row['id']])->fetch_assoc()['n'];
-  if($others&&!hash_equals($current,$password))throw new HttpException(409,'La contraseña está compartida con otros perfiles. Se requiere revisión administrativa antes del cambio.');
+  if($others&&!$this->actor($actor)['admin']&&!hash_equals($current,$password))throw new HttpException(409,'La contraseña está compartida con otros perfiles. Se requiere revisión administrativa antes del cambio.');
   $name=Rules::text($input['profile_name']??'',80,false)?:$row['profile_name'];
   $this->db->execute_query('UPDATE fm_service_accounts SET password_cipher=?,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?',[$this->vault->encrypt($password),$row['account_id']]);
   $this->db->execute_query('UPDATE fm_service_profiles SET name=? WHERE id=?',[$name,$row['profile_id']]);$this->audit($actor,'credentials',(int)$row['account_id']);
  }
- private function credentials(int $actor,array $input):array {$row=$this->assignment($actor,$input);$this->changeCredentials($actor,$input,$row,false);return ['message'=>'Contraseña y perfil registrados.'];}
+ private function credentials(int $actor,array $input):array {$row=$this->assignment($actor,$input);if($row['state']==='fallen')throw new HttpException(409,'La cuenta está caída. Espera su habilitación.');$this->changeCredentials($actor,$input,$row,false);return ['message'=>'Contraseña y perfil registrados.'];}
  private function release(int $actor,array $input):array {
-  $row=$this->assignment($actor,$input);$this->changeCredentials($actor,$input,$row,true);
+  $row=$this->assignment($actor,$input);if($row['state']==='fallen')throw new HttpException(409,'La cuenta caída debe ser restablecida por el administrador.');$this->changeCredentials($actor,$input,$row,true);
   $this->db->execute_query("UPDATE fm_service_assignments SET closed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),close_reason='release',revision=revision+1 WHERE id=?",[$row['id']]);$this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=NULL WHERE id=?',[$row['profile_id']]);$this->audit($actor,'release',(int)$row['id'],['seller_ids'=>[(int)$row['advisor_id']]]);return ['message'=>'Cuenta liberada.'];
  }
  private function fall(int $actor,array $input):array {
@@ -210,23 +227,62 @@ final class SpotifyRepository {
   $reason=Rules::text($input['reason']??'',500,false);
   $sellers=array_map('intval',array_column($this->db->execute_query('SELECT DISTINCT a.advisor_id FROM fm_service_profiles p JOIN fm_service_assignments a ON a.id=p.current_assignment_id WHERE p.account_id=?',[$accountId])->fetch_all(MYSQLI_ASSOC),'advisor_id'));
   $this->db->execute_query("UPDATE fm_service_accounts SET state='fallen',fallen_reason=?,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?",[$reason,$accountId]);
-  $this->db->execute_query("UPDATE fm_service_assignments a JOIN fm_service_profiles p ON p.current_assignment_id=a.id SET a.closed_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR),a.close_reason='fallen',a.revision=a.revision+1 WHERE p.account_id=?",[$accountId]);
-  $this->db->execute_query('UPDATE fm_service_profiles SET current_assignment_id=NULL WHERE account_id=?',[$accountId]);$this->audit($actor,'fall',$accountId,['seller_ids'=>$sellers]);return ['message'=>'Cuenta marcada como caída. Queda fuera de disponibles.'];
+$this->audit($actor,'fall',$accountId,['seller_ids'=>$sellers]);return ['message'=>'Cuenta marcada como caída. Queda fuera de disponibles.'];
  }
  private function rehabilitate(int $actor,array $input):array {
-  $this->admin($actor);$id=Rules::id($input['account_id']??null);$row=$this->db->execute_query('SELECT revision,state FROM fm_service_accounts WHERE id=? FOR UPDATE',[$id])->fetch_assoc();if(!$row)throw new HttpException(404,'Cuenta no disponible.');if((int)$row['revision']!==(int)($input['account_revision']??0)||$row['state']!=='fallen')throw new HttpException(409,'El estado de la cuenta cambió.');
+  $this->admin($actor);$id=Rules::id($input['account_id']??null);$row=$this->db->execute_query('SELECT main_id,revision,state,email,password_cipher FROM fm_service_accounts WHERE id=? FOR UPDATE',[$id])->fetch_assoc();if(!$row)throw new HttpException(404,'Cuenta no disponible.');if((int)$row['revision']!==(int)($input['account_revision']??0)||$row['state']!=='fallen')throw new HttpException(409,'El estado de la cuenta cambió.');
+  $changes=[];
   if(array_key_exists('password',$input)){
    $profileId=Rules::id($input['profile_id']??null);
-   $details=$this->db->execute_query('SELECT c.id account_id,c.revision account_revision,c.password_cipher,p.id profile_id,p.name profile_name,0 id FROM fm_service_accounts c JOIN fm_service_profiles p ON p.account_id=c.id WHERE c.id=? AND p.id=? FOR UPDATE',[$id,$profileId])->fetch_assoc();
-   if(!$details)throw new HttpException(422,'Perfil no válido para esta cuenta.');$this->changeCredentials($actor,$input,$details,false);
+   $details=$this->db->execute_query('SELECT c.id account_id,c.revision account_revision,c.password_cipher,p.id profile_id,p.name profile_name,COALESCE(p.current_assignment_id,0) id FROM fm_service_accounts c JOIN fm_service_profiles p ON p.account_id=c.id WHERE c.id=? AND p.id=? FOR UPDATE',[$id,$profileId])->fetch_assoc();
+   if(!$details)throw new HttpException(422,'Perfil no válido para esta cuenta.');if(($input['profile_name']??$details['profile_name'])!==$details['profile_name'])$changes[]='perfil';if(!hash_equals($this->vault->decrypt($details['password_cipher']),(string)$input['password']))$changes[]='contraseña';$this->changeCredentials($actor,$input,$details,false);
   }
-  $this->db->execute_query("UPDATE fm_service_accounts SET state='enabled',fallen_reason=NULL,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?",[$id]);$this->audit($actor,'rehabilitate',$id);return ['message'=>'Cuenta habilitada.'];
+  $email=Rules::email($input['email']??$row['email']);$this->assertAccountUnique((int)$row['main_id'],$email,$id);if($email!==$row['email'])$changes[]='correo';$this->db->execute_query('UPDATE fm_service_accounts SET email=? WHERE id=?',[$email,$id]);
+  $users=$this->db->execute_query('SELECT DISTINCT a.advisor_id FROM fm_service_profiles p JOIN fm_service_assignments a ON a.id=p.current_assignment_id WHERE p.account_id=?',[$id])->fetch_all(MYSQLI_ASSOC);
+  foreach($users as $user)$this->db->execute_query('INSERT INTO fm_notifications(user_id,account_id,message,created_at) VALUES(?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$user['advisor_id'],$id,'Tu cuenta Spotify '.$row['email'].' fue restablecida. '.($email!==$row['email']?'Nuevo correo: '.$email.'. ':'').($changes?'Cambios: '.implode(', ',$changes).'. Revisa la cuenta.':'Se conservaron los datos de la cuenta.')]);
+  $this->db->execute_query("UPDATE fm_service_accounts SET state='enabled',fallen_reason=NULL,revision=revision+1,updated_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=?",[$id]);$this->audit($actor,'rehabilitate',$id,['previous_email'=>$row['email'],'email'=>$email,'changes'=>$changes]);return ['message'=>'Cuenta habilitada.'];
+ }
+ private function resolveClient(int $actor,array $input,?string $original=null):?string {
+  $raw=$input['phone']??'';$name=$input['client_name']??'';
+  if($raw===''&&$name==='')return null;
+  $phone=Rules::phone($raw);$name=Rules::text($name,150);
+  $existing=$this->db->execute_query('SELECT name FROM fm_clients WHERE phone=? FOR UPDATE',[$phone])->fetch_assoc();
+  if(($input['client_mode']??'')==='edit'){
+   if(!$original)throw new HttpException(422,'No hay cliente para editar.');
+   $old=$this->db->execute_query('SELECT name FROM fm_clients WHERE phone=? FOR UPDATE',[$original])->fetch_assoc();
+   if(!$old||($input['original_client_name']??null)!==$old['name'])throw new HttpException(409,'El cliente cambió. Actualiza la pantalla.');
+   if($phone!==$original&&$existing)throw new HttpException(409,'El celular ya pertenece a otro cliente.');
+   $this->db->execute_query('UPDATE fm_clients SET phone=?,name=? WHERE phone=?',[$phone,$name,$original]);
+   $this->db->execute_query('INSERT INTO fm_client_audit(actor_id,before_json,after_json,created_at) VALUES(?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$actor,json_encode(['phone'=>$original,'name'=>$old['name']]),json_encode(['phone'=>$phone,'name'=>$name])]);
+  }elseif(!$existing)$this->db->execute_query('INSERT INTO fm_clients(phone,name,created_by,created_at) VALUES(?,?,?,(UTC_TIMESTAMP() - INTERVAL 5 HOUR))',[$phone,$name,$actor]);
+  elseif($existing['name']!==$name)throw new HttpException(409,'El celular pertenece a otro nombre. Busca el cliente o selecciona editar.');
+  return $phone;
+ }
+ private function beneficiary(?string $phone,array $input):?int {
+  $label=Rules::text($input['beneficiary']??'',80,false);if($label==='')return null;
+  if(!$phone)throw new HttpException(422,'Selecciona un cliente para registrar un beneficiario.');
+  $this->db->execute_query('INSERT IGNORE INTO fm_client_beneficiaries(client_phone,label) VALUES(?,?)',[$phone,$label]);
+  return (int)$this->db->execute_query('SELECT id FROM fm_client_beneficiaries WHERE client_phone=? AND label=?',[$phone,$label])->fetch_assoc()['id'];
  }
  private function transfer(int $actor,array $input):array {
-  $this->admin($actor);$row=$this->assignment($actor,$input);$target=Rules::id($input['advisor_id']??null);$this->eligible($target);if($target===(int)$row['advisor_id'])throw new HttpException(422,'Selecciona otro asesor.');
-  if(array_key_exists('password',$input))$this->changeCredentials($actor,$input,$row,false);
-  $this->db->execute_query('UPDATE fm_service_assignments SET advisor_id=?,revision=revision+1 WHERE id=?',[$target,$row['id']]);$this->audit($actor,'transfer',(int)$row['id'],['from'=>(int)$row['advisor_id'],'to'=>$target]);return ['message'=>'Cuenta reasignada.'];
+  $who=$this->actor($actor);$row=$this->assignment($actor,$input);$target=isset($input['advisor_id'])?Rules::id($input['advisor_id']):(int)$row['advisor_id'];
+  if($target!==(int)$row['advisor_id']){if(!$who['admin'])throw new HttpException(403,'Solo el administrador puede cambiar el asesor.');$this->eligible($target);}
+  $phone=array_key_exists('phone',$input)?$this->resolveClient($actor,$input,$row['client_phone']):$row['client_phone'];
+  $beneficiary=array_key_exists('beneficiary',$input)?$this->beneficiary($phone,$input):$row['beneficiary_id'];
+  if(array_key_exists('password',$input)){if(!$who['admin'])throw new HttpException(403,'Solo el administrador puede cambiar credenciales al reasignar.');$this->changeCredentials($actor,$input,$row,false);}
+  $this->db->execute_query('UPDATE fm_service_assignments SET advisor_id=?,client_phone=?,beneficiary_id=?,revision=revision+1 WHERE id=?',[$target,$phone,$beneficiary,$row['id']]);
+  $this->audit($actor,'transfer',(int)$row['id'],['from'=>(int)$row['advisor_id'],'to'=>$target,'previous_client'=>$row['client_phone'],'client'=>$phone,'beneficiary_id'=>$beneficiary]);return ['message'=>'Asignación actualizada.'];
  }
+ private function transferBulk(int $actor,array $input):array {
+  $this->admin($actor);$source=Rules::id($input['source_id']??null);$target=Rules::id($input['advisor_id']??null);if($source===$target)throw new HttpException(422,'Selecciona asesores distintos.');$this->eligible($target);
+  $rows=$this->db->execute_query('SELECT a.id,a.revision FROM fm_service_assignments a JOIN fm_service_profiles p ON p.current_assignment_id=a.id WHERE a.advisor_id=? AND a.closed_at IS NULL FOR UPDATE',[$source])->fetch_all(MYSQLI_ASSOC);
+  if(!$rows)throw new HttpException(409,'El asesor origen no tiene cuentas asignadas.');
+  if(isset($input['expected_count'])&&(int)$input['expected_count']!==count($rows))throw new HttpException(409,'La cantidad de cuentas cambió. Reabre el formulario para confirmar.');
+  foreach($rows as $row)$this->transfer($actor,['assignment_id'=>$row['id'],'revision'=>$row['revision'],'advisor_id'=>$target]);
+  return ['message'=>count($rows).' asignaciones trasladadas.'];
+ }
+ public function notifications(int $actor):array {$this->actor($actor);return $this->db->execute_query('SELECT id,account_id,message,created_at FROM fm_notifications WHERE user_id=? AND read_at IS NULL ORDER BY id DESC',[$actor])->fetch_all(MYSQLI_ASSOC);}
+ private function readNotification(int $actor,array $input):array {$this->db->execute_query('UPDATE fm_notifications SET read_at=(UTC_TIMESTAMP() - INTERVAL 5 HOUR) WHERE id=? AND user_id=?',[Rules::id($input['id']??null),$actor]);return ['message'=>'Notificación leída.'];}
  public function dashboard(int $actor):array {
   $who=$this->actor($actor);$args=[];$scope="c.state<>'deleted'";
   if(!$who['admin']){
@@ -246,12 +302,13 @@ final class SpotifyRepository {
   $who=$this->actor($actor);$types=$this->db->query('SELECT id,name,max_accounts,max_profiles FROM fm_service_types WHERE active=1 ORDER BY name')->fetch_all(MYSQLI_ASSOC);
   foreach($types as &$type)$type['available']=(int)$this->db->execute_query("SELECT COUNT(*) n FROM fm_service_profiles p JOIN fm_service_accounts c ON c.id=p.account_id JOIN fm_service_mains m ON m.id=c.main_id WHERE m.service_id=? AND c.state='enabled' AND p.current_assignment_id IS NULL",[$type['id']])->fetch_assoc()['n'];unset($type);
   $users=[];$orphans=0;
-  if($who['admin']){foreach(UserNames::all($this->db) as $user){$identity=(new UserRepository($this->db))->identity((int)$user['id']);$eligible=$identity&&(int)$identity['estado']===1&&!(new PermissionRepository($this->db))->isSuperuser((int)$user['id'])&&!empty((new PermissionRepository($this->db))->effective((int)$user['id'])['services.spotify']);$assigned=(int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_assignments WHERE advisor_id=? AND closed_at IS NULL',[$user['id']])->fetch_assoc()['n'];if(!$eligible)$orphans+=$assigned;if($eligible||$assigned)$users[]=['id'=>(int)$user['id'],'name'=>$user['display_name'],'eligible'=>(bool)$eligible];}}
-  return ['services'=>$types,'users'=>$users,'orphaned'=>$orphans,'fallen'=>$who['admin']?(int)$this->db->query("SELECT COUNT(*) n FROM fm_service_accounts WHERE state='fallen'")->fetch_assoc()['n']:0,'admin'=>$who['admin']];
+  if($who['admin']){foreach(UserNames::all($this->db) as $user){$identity=(new UserRepository($this->db))->identity((int)$user['id']);$eligible=$identity&&(int)$identity['estado']===1&&!(new PermissionRepository($this->db))->isSuperuser((int)$user['id'])&&!empty((new PermissionRepository($this->db))->effective((int)$user['id'])['services.spotify']);$assigned=(int)$this->db->execute_query('SELECT COUNT(*) n FROM fm_service_assignments WHERE advisor_id=? AND closed_at IS NULL',[$user['id']])->fetch_assoc()['n'];if(!$eligible)$orphans+=$assigned;if($identity&&(int)$identity['estado']===1&&mb_strtolower(trim($user['usuario']))!=='admin'&&($eligible||$assigned))$users[]=['id'=>(int)$user['id'],'name'=>$user['display_name'],'eligible'=>(bool)$eligible,'assigned'=>$assigned];}}
+  return ['services'=>$types,'users'=>$users,'orphaned'=>$orphans,'fallen'=>$who['admin']?(int)$this->db->query("SELECT COUNT(*) n FROM fm_service_accounts WHERE state='fallen'")->fetch_assoc()['n']:0,'admin'=>$who['admin'],'notifications'=>$this->notifications($actor)];
  }
  public function listing(int $actor,array $filters):array {
   $who=$this->actor($actor);$args=[];$where="c.state<>'deleted'";
   if(!$who['admin']){$where.=' AND a.advisor_id=? AND a.closed_at IS NULL';$args[]=$actor;}
+  if(!empty($filters['account_id'])){$where.=' AND c.id=?';$args[]=Rules::id($filters['account_id']);}
   $state=$filters['state']??'';
   if(!in_array($state,['','available','assigned','fallen'],true))throw new HttpException(422,'Estado no válido.');
   if($state==='available')$where.=" AND c.state='enabled' AND p.current_assignment_id IS NULL AND s.active=1";
@@ -264,10 +321,10 @@ final class SpotifyRepository {
   $expiry=$filters['expiry']??'';if(!in_array($expiry,['','expired','soon','current'],true))throw new HttpException(422,'Filtro de vencimiento no válido.');
   if($expiry==='current')$where.=' AND a.end_date>DATE_ADD(DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR),INTERVAL 3 DAY)';
   if($expiry==='expired')$where.=' AND a.end_date<DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR)';if($expiry==='soon')$where.=' AND a.end_date BETWEEN DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR) AND DATE_ADD(DATE(UTC_TIMESTAMP() - INTERVAL 5 HOUR),INTERVAL 3 DAY)';
-  $from=' FROM fm_service_profiles p JOIN fm_service_accounts c ON c.id=p.account_id JOIN fm_service_mains m ON m.id=c.main_id JOIN fm_service_types s ON s.id=m.service_id LEFT JOIN fm_service_assignments a ON a.id=p.current_assignment_id LEFT JOIN fm_clients cl ON cl.phone=a.client_phone';
+  $from=' FROM fm_service_profiles p JOIN fm_service_accounts c ON c.id=p.account_id JOIN fm_service_mains m ON m.id=c.main_id JOIN fm_service_types s ON s.id=m.service_id LEFT JOIN fm_service_assignments a ON a.id=p.current_assignment_id LEFT JOIN fm_clients cl ON cl.phone=a.client_phone LEFT JOIN fm_client_beneficiaries b ON b.id=a.beneficiary_id';
   $total=(int)$this->db->execute_query('SELECT COUNT(*) n'.$from.' WHERE '.$where,$args)->fetch_assoc()['n'];
   $size=(int)($filters['size']??20);if(!in_array($size,[10,20,50],true))throw new HttpException(422,'Tamaño de página no válido.');$pages=max(1,(int)ceil($total/$size));$page=max(1,min($pages,(int)($filters['page']??1)));$offset=($page-1)*$size;
-  $columns='p.id profile_id,p.name profile,c.id account_id,c.email,c.password_cipher,c.state,c.revision account_revision,s.id service_id,s.name service,a.id assignment_id,a.revision,a.advisor_id,a.start_date,a.end_date,a.last_renewed_at,cl.name client_name,cl.phone';
+  $columns='p.id profile_id,p.name profile,c.id account_id,c.email,c.password_cipher,c.state,c.revision account_revision,s.id service_id,s.name service,a.id assignment_id,a.revision,a.advisor_id,a.start_date,a.end_date,a.last_renewed_at,cl.name client_name,cl.phone,b.label beneficiary';
   if($who['admin'])$columns.=',m.id main_id,m.revision main_revision,m.email main_email,m.payment_email,m.next_payment,c.fallen_reason,(SELECT sa.actor_id FROM fm_service_audit sa WHERE sa.entity_id=c.id AND sa.action="fall" ORDER BY sa.id DESC LIMIT 1) fallen_reporter_id';
   $rows=$this->db->execute_query('SELECT '.$columns.$from.' WHERE '.$where.' ORDER BY m.id DESC,c.id DESC,p.id LIMIT '.$size.' OFFSET '.$offset,$args)->fetch_all(MYSQLI_ASSOC);$names=UserNames::all($this->db);
   foreach($rows as &$row){$row['password']=$this->vault->decrypt($row['password_cipher']);unset($row['password_cipher']);$row['advisor_name']=$names[$row['advisor_id']]['display_name']??null;if($who['admin'])$row['fallen_reporter_name']=$row['fallen_reporter_id']===null?null:($names[$row['fallen_reporter_id']]['display_name']??'Usuario no disponible');$row['days']=Rules::days($row['end_date']);if($who['admin'])$row['payment_days']=Rules::days($row['next_payment']);}unset($row);

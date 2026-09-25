@@ -24,6 +24,31 @@ function iniciarUsuarios() {
     });
   }
   cargarTabla();
+ const byId=id=>document.getElementById(id),node=fmModuleNode;
+ const importModal=bootstrap.Modal.getOrCreateInstance(byId('userImportModal'));let importing=false;
+ byId('userImportModal').addEventListener('hide.bs.modal',e=>{if(importing)e.preventDefault();});
+ byId('userImport').onclick=()=>{byId('userImportForm').reset();byId('userImportError').hidden=true;byId('usersImportReport').hidden=true;byId('usersImportReport').replaceChildren();importModal.show();};
+ byId('userImportForm').onsubmit=async e=>{e.preventDefault();if(importing)return;importing=true;byId('userImportSubmit').disabled=true;byId('userImportError').hidden=true;byId('usersImportReport').hidden=true;byId('usersImportReport').replaceChildren();
+  try{const file=byId('userCsv').files[0];if(!file||file.size>2097152)throw Error('Selecciona un CSV de hasta 2 MB.');const body=new FormData();body.set('action','import');body.set('file',file);
+   const response=await fetch(new URL('usuario/usuarios.php',document.baseURI),{method:'POST',credentials:'same-origin',body,headers:{'X-CSRF-Token':fmCsrfToken()}});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.message||'No se pudo importar.');
+   const report=byId('usersImportReport');report.replaceChildren(node('p','Se importaron '+data.imported+' registros. Se rechazaron '+data.errors.length+' registros.'));report.hidden=false;
+   if(data.errors.length){const download=node('button','Descargar CSV de rechazos','btn btn-sm btn-outline-primary');download.type='button';download.onclick=()=>{
+    const cell=value=>{let text=String(value??'');if(/^[=+@\-\t\r]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"';};
+    const lines=[['fila','nombre','apellido_paterno','apellido_materno','correo','telefono','usuario','clave','perfil','motivo'],...data.errors.map(error=>[error.line,...Array.from({length:8},(_,i)=>error.values?.[i]??''),error.reason])];
+    const url=URL.createObjectURL(new Blob(['\uFEFF'+lines.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=node('a');a.href=url;a.download='usuarios-rechazos.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+   };report.append(download);}
+   cargarTabla();
+  }catch(error){byId('userImportError').textContent=error.message;byId('userImportError').hidden=false;}finally{importing=false;byId('userImportSubmit').disabled=false;}
+ };
+  ['usuario','clave','telefono'].forEach(id=>{
+   const input=byId(id);
+   const validate=()=>input.setCustomValidity(/[\s\p{Z}]/u.test(input.value)?'No se permiten espacios en blanco.':'');
+   input.addEventListener('beforeinput',e=>{if(e.data&&/[\s\p{Z}]/u.test(e.data))e.preventDefault();});
+   input.addEventListener('paste',e=>{if(/[\s\p{Z}]/u.test(e.clipboardData.getData('text'))){e.preventDefault();input.setCustomValidity('El texto que intentas pegar contiene espacios.');input.reportValidity();}});
+   input.addEventListener('input',validate);
+   byId('usuarioForm').addEventListener('reset',()=>input.setCustomValidity(''));
+  });
+
 
 
 

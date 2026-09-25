@@ -3,6 +3,7 @@ if(PHP_SAPI!=='cli')exit;
 $isAdmin=true;ob_start();require dirname(__DIR__,2).'/resources/views/Links/index.php';$view=ob_get_clean();
 $script=<<<'JS'
 window.fmCsrfToken=()=> 'test';
+if(location.hash.includes('test')){const anchorClick=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(!this.download)return anchorClick.call(this);};}
 let sample={id:1,credentials:'cuenta@example.test:ejemplo',status:'active',error_type:0,usuario:'asesor',assigned_user_id:2,assigned_at:'20/09/2026 10:30 AM',moved_at:'20/09/2026 10:30 AM',moved_by:'admin',revision:1};
 window.fetch=async(url,options={})=>{
  const action=options.body?.get('action')||new URL(url).searchParams.get('action');
@@ -19,6 +20,21 @@ window.addEventListener('load',async()=>{
  if(!location.hash.includes('test'))return;
  const wait=()=>new Promise(resolve=>setTimeout(resolve,180));
  try{
+  if(location.hash.includes('import')) {
+   await wait();document.querySelector('[data-link-action="import"]').click();await wait();
+   const transfer=new DataTransfer();transfer.items.add(new File(['ID,secure,correo_contrasena\n001,secure-demo,cuenta@example.test:ejemplo'], 'cuentas.csv',{type:'text/csv'}));document.getElementById('linkCsv').files=transfer.files;
+   document.getElementById('linkQuantity').value='0';
+   const form=document.getElementById('linkAccountForm');
+   if(!form.checkValidity())throw Error('Un campo oculto bloquea importar');
+   form.requestSubmit();await wait();await wait();
+   const result=document.getElementById('linkImportResult');
+   if(!result.textContent.includes('Se importaron 1 registros')||!result.textContent.includes('Se rechazaron 1 registros'))throw Error('Falta resumen de importación');
+   if(result.querySelector('ul,table')||!result.querySelector('button'))throw Error('Falta motivo o descarga');
+   let downloaded='';const create=URL.createObjectURL;URL.createObjectURL=blob=>{blob.text().then(text=>downloaded=text);return create(blob);};
+   result.querySelector('button').click();await wait();
+   if(!downloaded.includes('cuenta@example.test')||!downloaded.includes('Ya existe'))throw Error('Log sin datos o motivo');
+   document.body.dataset.test='LINK_IMPORT_PASS';return;
+  }
   await wait();document.querySelector('[data-link-action="bulk"]').click();await wait();
   document.getElementById('linkOperation').value='transfer';document.getElementById('linkSource').value='2';document.getElementById('linkTarget').value='2';document.getElementById('linkSource').dispatchEvent(new Event('change',{bubbles:true}));await wait();
   if(document.getElementById('linkTarget').value==='2'||!document.querySelector('#linkTarget option[value="2"]').disabled)throw Error('Permite origen igual a destino');
@@ -50,7 +66,7 @@ window.addEventListener('load',async()=>{
   document.querySelector('[data-link-action="import"]').click();await wait();
   const dt=new DataTransfer();dt.items.add(new File(['ID,secure,correo_contrasena'], 'test.csv',{type:'text/csv'}));document.getElementById('linkCsv').files=dt.files;
   document.getElementById('linkAccountForm').requestSubmit();await wait();
-  if(!document.getElementById('linkImportResult').textContent.includes('Fila 3'))throw Error('Informe CSV');
+  if(!document.getElementById('linkImportResult').textContent.includes('Se rechazaron 1 registros'))throw Error('Informe CSV');
   bootstrap.Modal.getInstance(document.getElementById('linkAccountModal')).hide();await wait();await wait();
   const root=document.getElementById('linkAccounts');root.dataset.admin='0';delete root.dataset.ready;iniciarLink();await wait();
   if(root.querySelector('[data-link-action="error"]')||root.querySelector('[data-link-action="edit"]')||root.querySelector('[data-link-action="single"]'))throw Error('Acciones de administrador visibles');

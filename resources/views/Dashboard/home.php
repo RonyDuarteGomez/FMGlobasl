@@ -18,6 +18,7 @@ $menuPaths = [
 ];
 $menuPaths['reporteSoporte']=$menuPaths['soporteMenu'];
 $menuPaths['reporteLinks']=$menuPaths['Link'];
+$menuPaths['GeneradorExterno']=$menuPaths['Link'];$menuPaths['RestriccionesExterno']=$menuPaths['menuPermisos'];$menuPaths['ReporteExterno']=$menuPaths['reportesMenu'];
 $menuPaths['Clientes']=$menuPaths['menuUsuarios'];$menuPaths['VentasSpotify']=$menuPaths['reportesMenu'];
 $menuIcon = static fn($name) => '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="'.($menuPaths[$name] ?? $menuPaths['Servicios']).'"/></svg>';
 ?>
@@ -38,5 +39,5 @@ $menuIcon = static fn($name) => '<svg class="nav-icon" viewBox="0 0 24 24" fill=
 <div id="overlay"></div><header class="app-header navbar navbar-expand bg-body">
 <button class="toggle-btn btn btn-sm btn-outline-primary" id="toggle-btn" aria-label="Abrir o cerrar menú" aria-expanded="true">☰</button><div class="user-info"><span class="user-name"><?= $escape($nombre) ?></span><form method="POST" action="logout.php"><?= \FMGlobal\Security\Csrf::field() ?><button class="logout-btn btn btn-sm btn-outline-secondary" title="Cerrar sesión" aria-label="Cerrar sesión"><span aria-hidden="true">⏻</span></button></form></div></header>
 <main id="contenido" class="app-main"><div id="mantenedorUsuarios" aria-live="polite"></div></main></div>
-<script src="assets/js/security.js"></script><script src="assets/js/session.js"></script><script src="assets/js/main.js"></script><script src="assets/js/usuario.js"></script><script src="assets/js/activacion.js"></script><script src="assets/js/asesor.js"></script><script src="assets/js/soporte.js"></script><script src="assets/js/link.js"></script><script src="assets/js/spotify.js"></script><script src="assets/js/clients-sales.js"></script>
+<script src="assets/js/security.js"></script><script src="assets/js/session.js"></script><script src="assets/js/main.js"></script><script src="assets/js/usuario.js"></script><script src="assets/js/activacion.js"></script><script src="assets/js/asesor.js"></script><script src="assets/js/soporte.js"></script><script src="assets/js/link.js"></script><script src="assets/js/spotify.js"></script><script src="assets/js/clients-sales.js"></script><script src="assets/js/external-links.js"></script>
 <script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script><script src="assets/vendor/adminlte/adminlte.min.js"></script><script src="assets/js/table-actions.js"></script></body></html>

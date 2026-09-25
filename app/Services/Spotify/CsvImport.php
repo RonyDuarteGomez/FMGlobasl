@@ -12,8 +12,8 @@ final class CsvImport {
    if($header!==self::HEADER)throw new HttpException(422,'Las columnas deben coincidir con el CSV modelo, en el mismo orden.');
    $rows=[];$line=1;
    while(($values=fgetcsv($stream,0,$sep,'"',''))!==false){$line++;if($values===[null])continue;
-    if(count($values)!==count(self::HEADER))throw new HttpException(422,'Registro '.$line.': cantidad de columnas incorrecta. No se ha cargado el archivo.');
-    $row=array_combine(self::HEADER,$values);foreach($row as $k=>$v)if($k!=='contrasena')$row[$k]=trim($v);$row['_line']=$line;$rows[]=$row;
+    if(count($values)!==count(self::HEADER)){$rows[]=['_line'=>$line,'_values'=>$values,'_parse_error'=>'Cantidad de columnas incorrecta: se requieren '.count(self::HEADER).'.'];if(count($rows)>500)throw new HttpException(422,'Carga hasta 500 filas por archivo.');continue;}
+    $row=array_combine(self::HEADER,$values);foreach($row as $k=>$v)if($k!=='contrasena')$row[$k]=trim($v);$row['_line']=$line;$row['_values']=$values;$rows[]=$row;
     if(count($rows)>500)throw new HttpException(422,'Carga hasta 500 filas por archivo.');
    }
    if(!$rows)throw new HttpException(422,'El CSV no contiene datos.');return $rows;

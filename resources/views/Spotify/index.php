@@ -1,12 +1,13 @@
 <section class="contenedor gmail-page spotify-page" id="spotifyModule" data-admin="<?= $isAdmin?'1':'0' ?>">
  <div class="module-heading"><h2>Spotify</h2><span class="module-category">Gestión</span></div>
+ <div id="spotifyNotifications" hidden></div>
  <div id="spotifyNotice" class="alert alert-info" role="status" hidden></div>
  <?php if($isAdmin): ?><div id="spotifyAttention" class="alert alert-warning" role="status" hidden></div><?php endif ?>
  <?php if($isAdmin): ?><div class="d-flex align-items-center gap-3 mb-2"><div class="btn-group" role="group" aria-label="Modo Spotify"><input type="radio" class="btn-check" name="spotifyMode" id="spotifyModeSales" checked><label class="btn btn-sm btn-outline-primary" for="spotifyModeSales">Ventas</label><input type="radio" class="btn-check" name="spotifyMode" id="spotifyModePayments"><label class="btn btn-sm btn-outline-primary" for="spotifyModePayments">Pagos</label></div></div><?php endif ?>
   <div class="section-toolbar spotify-toolbar">
    <?php if($isAdmin): ?><button type="button" class="btn btn-sm btn-primary gmail-authorize" data-spotify-action="new">Agregar cuenta principal <span aria-hidden="true">＋</span></button><?php endif ?>
    <?php if(!$isAdmin): ?><button type="button" class="btn btn-sm btn-primary" data-spotify-action="obtain">Obtener cuenta</button><?php endif ?>
-   <?php if($isAdmin): ?><button type="button" class="btn btn-sm btn-outline-primary" data-spotify-action="import">Importar CSV</button><?php endif ?>
+   <?php if($isAdmin): ?><button type="button" class="btn btn-sm btn-outline-primary" data-spotify-action="import">Importar CSV</button><button type="button" class="btn btn-sm btn-outline-primary" data-spotify-action="transfer_bulk">Reasignar cuentas</button><?php endif ?>
    <span id="spotifyAvailable" class="small text-body-secondary" aria-live="polite"></span>
   </div>
  <div id="spotifySalesPanel" class="card card-body">
@@ -25,10 +26,10 @@
   <div class="table-responsive"><table id="spotifyPaymentsTable" class="tabla table table-sm table-hover align-middle"><thead><tr><th><input type="checkbox" id="spotifyPaymentsAll" aria-label="Seleccionar página visible"></th><th>Correo principal</th><th>Correo de pago</th><th>Próximo pago</th><th>Estado</th><th>Cuentas secundarias</th><th>Asignadas</th><th>Caídas</th><th>Libres</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
   <div class="table-footer"><span id="spotifyPaymentCount" class="small text-body-secondary"></span><div id="spotifyPaymentPages" class="paginacion"></div></div>
  </div><?php endif ?>
- <div id="spotifyImportReport" class="card card-body" hidden></div>
+
  <div class="modal fade" id="spotifyModal" tabindex="-1" aria-labelledby="spotifyModalTitle" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg"><div class="modal-content">
   <div class="modal-header"><h3 class="modal-title fs-5" id="spotifyModalTitle"></h3><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
-  <form id="spotifyForm"><div class="modal-body"><div id="spotifyError" class="alert alert-danger" role="alert" hidden></div><div id="spotifyBusy" class="text-center py-3" role="status" hidden><span class="spinner-border text-primary"></span><p class="mb-0">Procesando…</p></div><div id="spotifyFields"></div></div>
+  <form id="spotifyForm"><div class="modal-body"><div id="spotifyError" class="alert alert-danger" role="alert" hidden></div><div id="spotifyBusy" class="text-center py-3" role="status" hidden><span class="spinner-border text-primary"></span><p class="mb-0">Procesando…</p></div><div id="spotifyFields"></div><div id="spotifyImportReport" class="fm-import-result" role="status" hidden></div></div>
    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" id="spotifyClose">Cerrar</button><button type="submit" class="btn btn-sm btn-primary" id="spotifySubmit">Guardar</button></div>
   </form>
  </div></div></div>

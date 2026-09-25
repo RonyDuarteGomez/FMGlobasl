@@ -16,7 +16,7 @@ try {
  $db->query("INSERT INTO rol VALUES(1,'Administrador'),(2,'Asesor'),(3,'Soporte')");PermissionMigration::apply($db);SpotifyMigration::apply($db);SpotifyMigration::apply($db);
  $serviceId=(int)$db->query("SELECT id FROM fm_service_types WHERE code='spotify'")->fetch_assoc()['id'];
  spCheck((int)$db->query('SELECT COUNT(*) n FROM fm_service_types')->fetch_assoc()['n']===1,'Migración repetible');
- $users=new UserService(new UserRepository($db),new ScheduleRepository($db));$seed=fn($u,$r)=>['usuario'=>$u,'nombre'=>'Persona '.$u,'apellido_paterno'=>'Prueba','rol'=>(string)$r,'clave'=>'Synthetic test only 123!'];
+ $users=new UserService(new UserRepository($db),new ScheduleRepository($db));$seed=fn($u,$r)=>['usuario'=>$u,'nombre'=>'Persona '.$u,'apellido_paterno'=>'Prueba','rol'=>(string)$r,'clave'=>'SyntheticTestOnly123!'];
  $admin=$users->save($seed('admin',1),'test',0);$advisor=$users->save($seed('asesor_sp',2),'test',$admin);$other=$users->save($seed('soporte_sp',3),'test',$admin);
  $permissions=new PermissionRepository($db);spCheck(!empty($permissions->effective($admin)['services.spotify'])&&empty($permissions->effective($advisor)['services.spotify']),'Permiso solo administrador por defecto');
  $testKey=random_bytes(32);$repo=new SpotifyRepository($db,new AccountVault($testKey));$op=fn($actor,$action,$data)=>$repo->execute($actor,$action,$data+['request_key'=>bin2hex(random_bytes(16))]);
@@ -53,7 +53,22 @@ try {
  spCheck(\FMGlobal\Repositories\SpotifySalesRepository::period(['period'=>'custom','from'=>'2026-01-01','to'=>'2026-01-01'])===['2026-01-01','2026-01-01'],'Rango incluye fecha inicial y final');
  spReject(fn()=>$sales->report($admin,['period'=>'custom','from'=>'2026-02-30','to'=>'2026-03-01']),422,'Fecha imposible');
  spReject(fn()=>$sales->report($admin,['period'=>'custom','from'=>'2026-03-02','to'=>'2026-03-01']),422,'Rango invertido');
- $db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$admin,'clients.manage']);spReject(fn()=>$clients->listing($admin,[]),403,'Incluso admin TI pierde Clientes al denegar');
+ $info=$clients->information($admin,['phone'=>'+12025550123']);spCheck($info['total']===2,'Información reúne asignación actual e historial liberado');
+ spCheck($info['rows'][0]['status']==='fallen'&&$info['rows'][1]['status']==='released'&&$info['rows'][1]['released_at']!==null&&$info['rows'][1]['days']===null,'Distingue caída y liberación histórica');
+ spCheck(!str_contains(json_encode($info),'password')&&!str_contains(json_encode($info),'payment_email')&&!str_contains(json_encode($info),'main_email'),'Información no expone credenciales ni proveedor');
+ spCheck($clients->information($advisor,['phone'=>'+12025550123','actor'=>$other])['total']===1,'Información restringe asignaciones al usuario en sesión');
+ spCheck($clients->information($other,['phone'=>'+12025550123'])['rows'][0]['status']==='released','Operativo conserva su historial liberado');
+ spReject(fn()=>$clients->information($admin,['phone'=>'+12025550999']),404,'Información rechaza cliente inexistente');
+ $db->begin_transaction();try{
+  $db->execute_query("UPDATE fm_service_accounts SET state='enabled' WHERE id=?",[$row['account_id']]);
+  $db->execute_query('UPDATE fm_service_assignments SET end_date=DATE_SUB(CURDATE(),INTERVAL 2 DAY) WHERE id=?',[$row['assignment_id']]);
+  spCheck($clients->information($advisor,['phone'=>'+12025550123'])['rows'][0]['status']==='expired','Información detecta vencimiento del cliente');
+  $db->execute_query('UPDATE fm_service_assignments SET end_date=DATE_ADD(CURDATE(),INTERVAL 10 DAY) WHERE id=?',[$row['assignment_id']]);
+  spCheck($clients->information($advisor,['phone'=>'+12025550123'])['rows'][0]['status']==='active','Información detecta servicio activo');
+  for($i=0;$i<11;$i++)$db->execute_query("INSERT INTO fm_service_assignments(profile_id,client_phone,advisor_id,start_date,end_date,created_by,created_at,closed_at,close_reason) VALUES(?,?,?,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 MONTH),?,NOW(),NOW(),'release')",[$pid,'+12025550123',$advisor,$admin]);
+  $paged=$clients->information($advisor,['phone'=>'+12025550123','page'=>2]);spCheck($paged['total']===12&&$paged['pages']===2&&count($paged['rows'])===2,'Información pagina historial extenso');
+ }finally{$db->rollback();}
+ $db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$admin,'clients.manage']);spReject(fn()=>$clients->listing($admin,[]),403,'Incluso admin TI pierde Clientes al denegar');spReject(fn()=>$clients->information($admin,['phone'=>'+12025550123']),403,'Información respeta denegación administrativa');
  $db->execute_query('INSERT INTO fm_user_permissions VALUES(?,?,0) ON DUPLICATE KEY UPDATE allowed=0',[$admin,'reports.spotify_sales']);spReject(fn()=>$sales->report($admin,[]),403,'Incluso admin TI pierde reporte al denegar');
  PermissionMigration::apply($db);spReject(fn()=>$sales->report($admin,[]),403,'Migración conserva denegación administrativa');
  $db->execute_query('DELETE FROM fm_user_permissions WHERE user_id=? AND permission_code=?',[$admin,'reports.spotify_sales']);

@@ -1,5 +1,8 @@
 <?php
 return array (
+  'servicios/generador.php'=>'app/Controllers/External/index.php',
+  'mantenimiento/restricciones-generador.php'=>'app/Controllers/External/index.php',
+  'reportes/links-externos.php'=>'app/Controllers/External/index.php',
   'gestion/clientes.php'=>'app/Controllers/Clients/index.php',
   'reportes/ventas-spotify.php'=>'app/Controllers/Reports/spotify-sales.php',
   'session.php' => 'app/Controllers/Auth/session.php',
